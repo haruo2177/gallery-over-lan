@@ -14,9 +14,12 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.SubcomposeAsyncImage
+import com.example.galleryoverlan.domain.model.SortOrder
+import com.example.galleryoverlan.ui.components.ErrorDisplay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,6 +68,31 @@ fun ImageListScreen(
                     }
                 },
                 actions = {
+                    Box {
+                        IconButton(onClick = viewModel::toggleSortMenu) {
+                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "ソート")
+                        }
+                        DropdownMenu(
+                            expanded = state.showSortMenu,
+                            onDismissRequest = viewModel::toggleSortMenu
+                        ) {
+                            SortOrder.entries.forEach { order ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = order.label,
+                                            fontWeight = if (order == state.sortOrder) {
+                                                androidx.compose.ui.text.font.FontWeight.Bold
+                                            } else {
+                                                null
+                                            }
+                                        )
+                                    },
+                                    onClick = { viewModel.onSortOrderChange(order) }
+                                )
+                            }
+                        }
+                    }
                     IconButton(onClick = viewModel::loadImages) {
                         Icon(Icons.Filled.Refresh, contentDescription = "更新")
                     }
@@ -99,19 +129,11 @@ fun ImageListScreen(
                 }
 
                 state.error != null -> {
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = state.error ?: "",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
+                    ErrorDisplay(
+                        message = state.error ?: "",
+                        modifier = Modifier.align(Alignment.Center),
+                        onRetry = viewModel::loadImages
+                    )
                 }
 
                 state.images.isEmpty() -> {
@@ -125,7 +147,7 @@ fun ImageListScreen(
                 else -> {
                     Column {
                         Text(
-                            text = "${state.images.size}枚",
+                            text = "${state.images.size}枚 - ${state.sortOrder.label}",
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.bodySmall
                         )

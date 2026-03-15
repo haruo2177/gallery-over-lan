@@ -13,7 +13,7 @@ import com.example.galleryoverlan.data.security.CredentialRepository
 import com.example.galleryoverlan.data.security.CredentialRepositoryImpl
 import com.example.galleryoverlan.data.settings.SettingsRepository
 import com.example.galleryoverlan.data.settings.SettingsRepositoryImpl
-import com.example.galleryoverlan.data.smb.DefaultHostResolver
+import com.example.galleryoverlan.data.smb.CompositeHostResolver
 import com.example.galleryoverlan.data.smb.HostResolver
 import com.example.galleryoverlan.data.smb.SmbClient
 import com.example.galleryoverlan.data.smb.SmbClientImpl
@@ -52,7 +52,7 @@ abstract class DataBindingsModule {
 
     @Binds
     @Singleton
-    abstract fun bindHostResolver(impl: DefaultHostResolver): HostResolver
+    abstract fun bindHostResolver(impl: CompositeHostResolver): HostResolver
 
     @Binds
     @Singleton
