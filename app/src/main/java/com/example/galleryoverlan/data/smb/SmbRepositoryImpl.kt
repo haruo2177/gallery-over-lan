@@ -78,6 +78,8 @@ class SmbRepositoryImpl @Inject constructor(
         smbClient.disconnect()
     }
 
+    override fun isConnected(): Boolean = smbClient.isConnected
+
     private suspend fun ensureConnected() {
         if (!smbClient.isConnected) {
             AppLogger.i("Re-establishing connection", TAG)

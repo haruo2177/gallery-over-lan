@@ -15,45 +15,33 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class ImageListViewModel @Inject constructor(
+class ViewerViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val listImagesUseCase: ListImagesUseCase,
     private val smbRepository: SmbRepository,
     private val dispatchers: AppDispatchers
 ) : ViewModel() {
 
-    private val folderPath: String = (savedStateHandle.get<String>("folderPath") ?: "").trim()
+    private val folderPath: String = savedStateHandle["folderPath"] ?: ""
+    private val startIndex: Int = savedStateHandle["startIndex"] ?: 0
 
-    private val _uiState = MutableStateFlow(ImageListUiState(folderPath = folderPath))
-    val uiState: StateFlow<ImageListUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(ViewerUiState())
+    val uiState: StateFlow<ViewerUiState> = _uiState.asStateFlow()
 
     init {
         loadImages()
     }
 
-    fun loadImages() {
+    private fun loadImages() {
         viewModelScope.launch(dispatchers.io) {
-            if (!smbRepository.isConnected()) {
-                _uiState.value = _uiState.value.copy(isConnecting = true, error = null)
-                val connectResult = smbRepository.connectWithSavedConfig()
-                if (connectResult is AppResult.Error) {
-                    _uiState.value = _uiState.value.copy(
-                        isConnecting = false,
-                        error = connectResult.message
-                    )
-                    return@launch
-                }
-                _uiState.value = _uiState.value.copy(isConnecting = false)
-            }
-
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             val result = listImagesUseCase(folderPath)
             _uiState.value = when (result) {
                 is AppResult.Success -> _uiState.value.copy(
                     images = result.data,
-                    isLoading = false,
-                    error = null
+                    currentIndex = startIndex.coerceIn(0, (result.data.size - 1).coerceAtLeast(0)),
+                    isLoading = false
                 )
                 is AppResult.Error -> _uiState.value.copy(
                     isLoading = false,
@@ -61,5 +49,13 @@ class ImageListViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun onPageChanged(index: Int) {
+        _uiState.value = _uiState.value.copy(currentIndex = index)
+    }
+
+    fun toggleControls() {
+        _uiState.value = _uiState.value.copy(showControls = !_uiState.value.showControls)
     }
 }

@@ -22,4 +22,6 @@ interface SmbRepository {
     suspend fun readImageStream(path: String): AppResult<InputStream>
 
     suspend fun disconnect()
+
+    fun isConnected(): Boolean
 }
