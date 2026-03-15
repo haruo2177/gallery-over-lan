@@ -5,6 +5,10 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import coil.ImageLoader
+import com.example.galleryoverlan.core.network.NetworkMonitor
+import com.example.galleryoverlan.core.network.NetworkMonitorImpl
+import com.example.galleryoverlan.data.cache.ThumbnailCache
+import com.example.galleryoverlan.data.cache.ThumbnailCacheImpl
 import com.example.galleryoverlan.data.security.CredentialRepository
 import com.example.galleryoverlan.data.security.CredentialRepositoryImpl
 import com.example.galleryoverlan.data.settings.SettingsRepository
@@ -16,7 +20,6 @@ import com.example.galleryoverlan.data.smb.SmbClientImpl
 import com.example.galleryoverlan.data.smb.SmbRepository
 import com.example.galleryoverlan.data.smb.SmbRepositoryImpl
 import com.example.galleryoverlan.ui.viewer.SmbImageFetcher
-import com.example.galleryoverlan.ui.viewer.SmbImageRequest
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -50,6 +53,14 @@ abstract class DataBindingsModule {
     @Binds
     @Singleton
     abstract fun bindHostResolver(impl: DefaultHostResolver): HostResolver
+
+    @Binds
+    @Singleton
+    abstract fun bindThumbnailCache(impl: ThumbnailCacheImpl): ThumbnailCache
+
+    @Binds
+    @Singleton
+    abstract fun bindNetworkMonitor(impl: NetworkMonitorImpl): NetworkMonitor
 }
 
 @Module
@@ -66,11 +77,12 @@ object DataProvidesModule {
     @Singleton
     fun provideImageLoader(
         @ApplicationContext context: Context,
-        smbRepository: SmbRepository
+        smbRepository: SmbRepository,
+        thumbnailCache: ThumbnailCache
     ): ImageLoader {
         return ImageLoader.Builder(context)
             .components {
-                add(SmbImageFetcher.Factory(smbRepository, context))
+                add(SmbImageFetcher.Factory(smbRepository, thumbnailCache, context))
             }
             .crossfade(true)
             .build()

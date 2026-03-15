@@ -137,7 +137,7 @@ fun ImageListScreen(
                         ) {
                             itemsIndexed(state.images) { index, image ->
                                 SubcomposeAsyncImage(
-                                    model = SmbImageRequest(image.path),
+                                    model = SmbImageRequest(path = image.path, thumbnail = true),
                                     contentDescription = image.name,
                                     contentScale = ContentScale.Crop,
                                     loading = {
