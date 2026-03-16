@@ -1,0 +1,348 @@
+package com.example.galleryoverlan.ui.browse
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.BrokenImage
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.SubcomposeAsyncImage
+import com.example.galleryoverlan.domain.model.SortOrder
+import com.example.galleryoverlan.ui.navigation.Routes
+import com.example.galleryoverlan.ui.viewer.SmbImageRequest
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BrowseScreen(
+    onNavigateBack: () -> Unit,
+    onNavigateToViewer: (folderPath: String, startIndex: Int) -> Unit,
+    viewModel: BrowseViewModel = hiltViewModel()
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.navigateToViewer.collect { (folderPath, index) ->
+            onNavigateToViewer(folderPath, index)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.navigateBack.collect {
+            onNavigateBack()
+        }
+    }
+
+    BackHandler {
+        if (!viewModel.onBackPressed()) {
+            onNavigateBack()
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    when (state.level) {
+                        is BrowseLevel.Shares -> Text("共有一覧")
+                        is BrowseLevel.Folder -> Text(state.currentShareName)
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        if (!viewModel.onBackPressed()) {
+                            onNavigateBack()
+                        }
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "戻る")
+                    }
+                },
+                actions = {
+                    if (state.level is BrowseLevel.Folder) {
+                        Box {
+                            IconButton(onClick = viewModel::toggleSortMenu) {
+                                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "ソート")
+                            }
+                            DropdownMenu(
+                                expanded = state.showSortMenu,
+                                onDismissRequest = viewModel::toggleSortMenu
+                            ) {
+                                SortOrder.entries.forEach { order ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = order.label,
+                                                fontWeight = if (order == state.sortOrder) {
+                                                    FontWeight.Bold
+                                                } else {
+                                                    null
+                                                }
+                                            )
+                                        },
+                                        onClick = { viewModel.onSortOrderChange(order) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    IconButton(onClick = viewModel::refresh) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "更新")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Breadcrumb
+            if (state.level is BrowseLevel.Folder) {
+                BrowseBreadcrumb(
+                    items = state.breadcrumbs,
+                    onItemClick = viewModel::onBreadcrumbClick
+                )
+            }
+
+            // Content
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    state.isLoading -> {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
+
+                    state.error != null -> {
+                        Text(
+                            text = state.error ?: "",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(16.dp)
+                        )
+                    }
+
+                    state.level is BrowseLevel.Shares -> {
+                        SharesList(
+                            shares = state.shares,
+                            onShareClick = viewModel::onShareSelected
+                        )
+                    }
+
+                    else -> {
+                        FolderContents(
+                            state = state,
+                            onFolderClick = viewModel::navigateTo,
+                            onImageClick = viewModel::onImageClick
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BrowseBreadcrumb(
+    items: List<BrowseBreadcrumbItem>,
+    onItemClick: (BrowseBreadcrumbItem) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        items.forEachIndexed { index, item ->
+            if (index > 0) {
+                Text(
+                    text = " / ",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            val isLast = index == items.lastIndex
+            Text(
+                text = item.name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isLast) FontWeight.Bold else null,
+                color = if (isLast) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                modifier = if (!isLast) {
+                    Modifier.clickable { onItemClick(item) }
+                } else {
+                    Modifier
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SharesList(
+    shares: List<String>,
+    onShareClick: (String) -> Unit
+) {
+    if (shares.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("共有フォルダが見つかりませんでした")
+        }
+        return
+    }
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(1),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        items(shares, key = { it }) { share ->
+            ListItem(
+                headlineContent = { Text(share) },
+                leadingContent = {
+                    Icon(
+                        Icons.Filled.Folder,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                modifier = Modifier.clickable { onShareClick(share) }
+            )
+            HorizontalDivider()
+        }
+    }
+}
+
+@Composable
+private fun FolderContents(
+    state: BrowseUiState,
+    onFolderClick: (String) -> Unit,
+    onImageClick: (Int) -> Unit
+) {
+    if (state.folders.isEmpty() && state.images.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("このフォルダは空です")
+        }
+        return
+    }
+
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 120.dp),
+        modifier = Modifier.fillMaxSize(),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        // Folders as full-width list items
+        items(
+            items = state.folders,
+            key = { "folder:${it.path}" },
+            span = { GridItemSpan(maxLineSpan) }
+        ) { folder ->
+            Column {
+                ListItem(
+                    headlineContent = { Text(folder.name) },
+                    supportingContent = folder.imageCount?.let {
+                        { Text("${it}枚") }
+                    },
+                    leadingContent = {
+                        Icon(
+                            Icons.Filled.Folder,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    modifier = Modifier.clickable { onFolderClick(folder.path) }
+                )
+                HorizontalDivider()
+            }
+        }
+
+        // Images as grid cells
+        itemsIndexed(
+            items = state.images,
+            key = { _, image -> "image:${image.path}" }
+        ) { index, image ->
+            SubcomposeAsyncImage(
+                model = SmbImageRequest(path = image.path, thumbnail = true),
+                contentDescription = image.name,
+                contentScale = ContentScale.Crop,
+                loading = {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                },
+                error = {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Filled.BrokenImage,
+                            contentDescription = "読み込み失敗",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clickable { onImageClick(index) }
+            )
+        }
+    }
+}

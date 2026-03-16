@@ -25,11 +25,10 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override val connectionConfig: Flow<ConnectionConfig?> = dataStore.data.map { prefs ->
         val hostName = prefs[KEY_HOST_NAME] ?: return@map null
-        val shareName = prefs[KEY_SHARE_NAME] ?: return@map null
         val userName = prefs[KEY_USER_NAME] ?: return@map null
         ConnectionConfig(
             hostName = hostName,
-            shareName = shareName,
+            shareName = prefs[KEY_SHARE_NAME] ?: "",
             userName = userName,
             baseFolderPath = prefs[KEY_BASE_FOLDER_PATH] ?: "",
             lastSuccessfulIp = prefs[KEY_LAST_SUCCESSFUL_IP]

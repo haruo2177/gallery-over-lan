@@ -15,12 +15,12 @@ class CompositeHostResolver @Inject constructor(
         // If it's already an IP address, return as-is
         if (isIpAddress(hostName)) return hostName
 
-        // Try standard DNS resolution first
+        // Try standard DNS resolution, fall back to hostname as-is
         return try {
             defaultResolver.resolve(hostName)
         } catch (e: Exception) {
-            AppLogger.w("DNS resolution failed for $hostName, no fallback available yet", tag = TAG)
-            throw e
+            AppLogger.w("DNS resolution failed for $hostName, using as-is", tag = TAG)
+            hostName
         }
     }
 

@@ -15,6 +15,12 @@ interface SmbRepository {
 
     suspend fun connectWithSavedConfig(): AppResult<Unit>
 
+    suspend fun connectToHost(host: String, userName: String, password: String): AppResult<Unit>
+
+    suspend fun listShares(): AppResult<List<String>>
+
+    suspend fun connectToShare(shareName: String): AppResult<Unit>
+
     suspend fun listFolders(path: String): AppResult<List<FolderItem>>
 
     suspend fun listImages(path: String): AppResult<List<ImageItem>>
@@ -24,4 +30,6 @@ interface SmbRepository {
     suspend fun disconnect()
 
     fun isConnected(): Boolean
+
+    fun isHostConnected(): Boolean
 }

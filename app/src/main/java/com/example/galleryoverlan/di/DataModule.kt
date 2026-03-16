@@ -7,6 +7,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import coil.ImageLoader
 import com.example.galleryoverlan.core.network.NetworkMonitor
 import com.example.galleryoverlan.core.network.NetworkMonitorImpl
+import com.example.galleryoverlan.data.network.LanScanner
+import com.example.galleryoverlan.data.network.LanScannerImpl
 import com.example.galleryoverlan.data.cache.ThumbnailCache
 import com.example.galleryoverlan.data.cache.ThumbnailCacheImpl
 import com.example.galleryoverlan.data.security.CredentialRepository
@@ -61,6 +63,10 @@ abstract class DataBindingsModule {
     @Binds
     @Singleton
     abstract fun bindNetworkMonitor(impl: NetworkMonitorImpl): NetworkMonitor
+
+    @Binds
+    @Singleton
+    abstract fun bindLanScanner(impl: LanScannerImpl): LanScanner
 }
 
 @Module

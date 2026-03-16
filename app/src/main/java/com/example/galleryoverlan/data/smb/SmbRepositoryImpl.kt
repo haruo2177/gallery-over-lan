@@ -24,6 +24,11 @@ class SmbRepositoryImpl @Inject constructor(
         private const val TAG = "SmbRepository"
     }
 
+    private var currentHost: String? = null
+    private var currentUserName: String? = null
+    private var currentPassword: String? = null
+    private var currentShareName: String? = null
+
     override suspend fun testConnection(
         host: String,
         shareName: String,
@@ -52,9 +57,51 @@ class SmbRepositoryImpl @Inject constructor(
         val host = resolveHost(config.hostName, config.lastSuccessfulIp)
             ?: return AppResult.Error(SmbError.NetworkUnreachable())
 
-        val result = smbClient.connect(host, config.shareName, credentials.first, credentials.second)
+        val shareName = currentShareName ?: config.shareName
+        if (shareName.isBlank()) {
+            return AppResult.Error(SmbError.ShareNotFound("", null))
+        }
+
+        val result = smbClient.connect(host, shareName, credentials.first, credentials.second)
         if (result.isSuccess) {
             settingsRepository.updateLastSuccessfulIp(host)
+            currentHost = host
+            currentUserName = credentials.first
+            currentPassword = credentials.second
+            currentShareName = shareName
+        }
+        return result
+    }
+
+    override suspend fun connectToHost(
+        host: String,
+        userName: String,
+        password: String
+    ): AppResult<Unit> {
+        val resolvedHost = try {
+            hostResolver.resolve(host)
+        } catch (e: Exception) {
+            return AppResult.Error(SmbError.NetworkUnreachable(e))
+        }
+        val result = smbClient.connectHost(resolvedHost, userName, password)
+        if (result.isSuccess) {
+            settingsRepository.updateLastSuccessfulIp(resolvedHost)
+            currentHost = resolvedHost
+            currentUserName = userName
+            currentPassword = password
+            currentShareName = null
+        }
+        return result
+    }
+
+    override suspend fun listShares(): AppResult<List<String>> {
+        return smbClient.listSharesFromSession()
+    }
+
+    override suspend fun connectToShare(shareName: String): AppResult<Unit> {
+        val result = smbClient.connectShare(shareName)
+        if (result.isSuccess) {
+            currentShareName = shareName
         }
         return result
     }
@@ -76,9 +123,15 @@ class SmbRepositoryImpl @Inject constructor(
 
     override suspend fun disconnect() {
         smbClient.disconnect()
+        currentHost = null
+        currentUserName = null
+        currentPassword = null
+        currentShareName = null
     }
 
     override fun isConnected(): Boolean = smbClient.isConnected
+
+    override fun isHostConnected(): Boolean = smbClient.isHostConnected
 
     private suspend fun ensureConnected() {
         if (!smbClient.isConnected) {

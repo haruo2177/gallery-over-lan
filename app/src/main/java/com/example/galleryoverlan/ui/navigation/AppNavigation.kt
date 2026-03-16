@@ -6,9 +6,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.galleryoverlan.ui.browser.BrowserScreen
-import com.example.galleryoverlan.ui.settings.SettingsScreen
-import com.example.galleryoverlan.ui.viewer.ImageListScreen
+import com.example.galleryoverlan.ui.browse.BrowseScreen
+import com.example.galleryoverlan.ui.connect.ConnectScreen
 import com.example.galleryoverlan.ui.viewer.ViewerScreen
 
 @Composable
@@ -17,39 +16,24 @@ fun AppNavigation() {
 
     NavHost(
         navController = navController,
-        startDestination = Routes.SETTINGS
+        startDestination = Routes.CONNECT
     ) {
-        composable(Routes.SETTINGS) {
-            SettingsScreen(
-                onNavigateToImageList = {
-                    navController.navigate(Routes.BROWSER)
+        composable(Routes.CONNECT) {
+            ConnectScreen(
+                onNavigateToBrowse = {
+                    navController.navigate(Routes.BROWSE) {
+                        popUpTo(Routes.CONNECT) { inclusive = false }
+                        launchSingleTop = true
+                    }
                 }
             )
         }
 
-        composable(Routes.BROWSER) {
-            BrowserScreen(
+        composable(Routes.BROWSE) {
+            BrowseScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onFolderClick = { path ->
-                    // Navigate within browser (handled by ViewModel)
-                },
-                onViewImages = { folderPath ->
-                    navController.navigate(Routes.imageList(folderPath))
-                }
-            )
-        }
-
-        composable(
-            route = Routes.IMAGE_LIST,
-            arguments = listOf(
-                navArgument("folderPath") { type = NavType.StringType }
-            )
-        ) {
-            ImageListScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onImageClick = { index ->
-                    val folderPath = it.arguments?.getString("folderPath")?.trim() ?: ""
-                    navController.navigate(Routes.viewer(folderPath, index))
+                onNavigateToViewer = { folderPath, startIndex ->
+                    navController.navigate(Routes.viewer(folderPath, startIndex))
                 }
             )
         }

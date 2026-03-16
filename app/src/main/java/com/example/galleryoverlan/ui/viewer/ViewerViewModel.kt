@@ -26,7 +26,9 @@ class ViewerViewModel @Inject constructor(
     private val dispatchers: AppDispatchers
 ) : ViewModel() {
 
-    private val folderPath: String = (savedStateHandle.get<String>("folderPath") ?: "").trim()
+    private val folderPath: String = com.example.galleryoverlan.ui.navigation.Routes.decodePath(
+        savedStateHandle.get<String>("folderPath")
+    )
     private val startIndex: Int = savedStateHandle["startIndex"] ?: 0
 
     private val _uiState = MutableStateFlow(ViewerUiState())
