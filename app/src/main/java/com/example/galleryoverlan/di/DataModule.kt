@@ -22,6 +22,7 @@ import com.example.galleryoverlan.data.smb.SmbClientImpl
 import com.example.galleryoverlan.data.smb.SmbRepository
 import com.example.galleryoverlan.data.smb.SmbRepositoryImpl
 import com.example.galleryoverlan.ui.viewer.SmbImageFetcher
+import com.example.galleryoverlan.ui.viewer.SmbImageRequest
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -88,6 +89,7 @@ object DataProvidesModule {
     ): ImageLoader {
         return ImageLoader.Builder(context)
             .components {
+                add(SmbImageFetcher.SmbImageKeyer())
                 add(SmbImageFetcher.Factory(smbRepository, thumbnailCache, context))
             }
             .crossfade(true)

@@ -12,21 +12,21 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.remember
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,10 +49,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.SubcomposeAsyncImage
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.galleryoverlan.domain.model.SortOrder
 import com.example.galleryoverlan.ui.navigation.Routes
 import com.example.galleryoverlan.ui.viewer.SmbImageRequest
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -275,8 +279,34 @@ private fun FolderContents(
         return
     }
 
+    val gridState = rememberLazyGridState()
+    val context = LocalContext.current
+    val imageLoader = remember { coil.Coil.imageLoader(context) }
+
+    // Prefetch images beyond visible area
+    val prefetchRange = 20
+    val lastVisibleIndex by remember {
+        derivedStateOf {
+            gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+        }
+    }
+    val folderCount = state.folders.size
+    LaunchedEffect(lastVisibleIndex, state.images.size) {
+        val lastVisibleImageIndex = lastVisibleIndex - folderCount
+        val prefetchStart = (lastVisibleImageIndex + 1).coerceAtLeast(0)
+        val prefetchEnd = (prefetchStart + prefetchRange).coerceAtMost(state.images.size)
+        for (i in prefetchStart until prefetchEnd) {
+            val request = ImageRequest.Builder(context)
+                .data(SmbImageRequest(path = state.images[i].path, thumbnail = true))
+                .size(256)
+                .build()
+            imageLoader.enqueue(request)
+        }
+    }
+
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 120.dp),
+        state = gridState,
         modifier = Modifier.fillMaxSize(),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -311,33 +341,13 @@ private fun FolderContents(
             items = state.images,
             key = { _, image -> "image:${image.path}" }
         ) { index, image ->
-            SubcomposeAsyncImage(
-                model = SmbImageRequest(path = image.path, thumbnail = true),
+            val model = remember(image.path) {
+                SmbImageRequest(path = image.path, thumbnail = true)
+            }
+            AsyncImage(
+                model = model,
                 contentDescription = image.name,
                 contentScale = ContentScale.Crop,
-                loading = {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
-                        )
-                    }
-                },
-                error = {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Filled.BrokenImage,
-                            contentDescription = "読み込み失敗",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
-                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)

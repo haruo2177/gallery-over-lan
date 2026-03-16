@@ -11,6 +11,7 @@ import coil.decode.ImageSource
 import coil.fetch.FetchResult
 import coil.fetch.Fetcher
 import coil.fetch.SourceResult
+import coil.key.Keyer
 import coil.request.Options
 import com.example.galleryoverlan.data.cache.ThumbnailCache
 import com.example.galleryoverlan.data.smb.SmbRepository
@@ -33,7 +34,7 @@ class SmbImageFetcher(
 ) : Fetcher {
 
     companion object {
-        private const val THUMBNAIL_SIZE = 96
+        private const val THUMBNAIL_SIZE = 256
     }
 
     override suspend fun fetch(): FetchResult {
@@ -165,6 +166,12 @@ class SmbImageFetcher(
             }
         }
         return inSampleSize
+    }
+
+    class SmbImageKeyer : Keyer<SmbImageRequest> {
+        override fun key(data: SmbImageRequest, options: Options): String {
+            return if (data.thumbnail) "smb_thumb:${data.path}" else "smb_full:${data.path}"
+        }
     }
 
     class Factory(
