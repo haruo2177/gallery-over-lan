@@ -63,9 +63,9 @@ fun ConnectScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
-                    value = state.hostName,
-                    onValueChange = viewModel::onHostNameChange,
-                    label = { Text("PC名またはIP") },
+                    value = state.pcName,
+                    onValueChange = viewModel::onPcNameChange,
+                    label = { Text("PC名") },
                     singleLine = true,
                     modifier = Modifier.weight(1f)
                 )
@@ -77,6 +77,14 @@ fun ConnectScreen(
                     )
                 }
             }
+
+            OutlinedTextField(
+                value = state.ipAddress,
+                onValueChange = viewModel::onIpAddressChange,
+                label = { Text("IPアドレス") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             OutlinedTextField(
                 value = state.userName,
@@ -96,7 +104,7 @@ fun ConnectScreen(
             Button(
                 onClick = viewModel::connect,
                 enabled = !state.isConnecting &&
-                    state.hostName.isNotBlank() &&
+                    (state.ipAddress.isNotBlank() || state.pcName.isNotBlank()) &&
                     state.userName.isNotBlank(),
                 modifier = Modifier.align(Alignment.End)
             ) {

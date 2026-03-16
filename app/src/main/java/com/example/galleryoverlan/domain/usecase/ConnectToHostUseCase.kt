@@ -14,13 +14,14 @@ class ConnectToHostUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(
         hostName: String,
+        pcName: String,
         userName: String,
         password: String
     ): AppResult<Unit> {
         val result = smbRepository.connectToHost(hostName, userName, password)
         if (result.isSuccess) {
             val config = ConnectionConfig(
-                hostName = hostName,
+                hostName = pcName,
                 userName = userName
             )
             settingsRepository.saveConnectionConfig(config)

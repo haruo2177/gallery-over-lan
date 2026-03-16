@@ -48,7 +48,8 @@ class ConnectViewModel @Inject constructor(
             val credentials = credentialRepository.getCredentials()
             if (config != null) {
                 _uiState.value = _uiState.value.copy(
-                    hostName = config.hostName,
+                    pcName = config.hostName,
+                    ipAddress = config.lastSuccessfulIp ?: "",
                     userName = config.userName,
                     password = credentials?.second ?: ""
                 )
@@ -56,8 +57,12 @@ class ConnectViewModel @Inject constructor(
         }
     }
 
-    fun onHostNameChange(value: String) {
-        _uiState.value = _uiState.value.copy(hostName = value, error = null)
+    fun onPcNameChange(value: String) {
+        _uiState.value = _uiState.value.copy(pcName = value, error = null)
+    }
+
+    fun onIpAddressChange(value: String) {
+        _uiState.value = _uiState.value.copy(ipAddress = value, error = null)
     }
 
     fun onUserNameChange(value: String) {
@@ -70,31 +75,45 @@ class ConnectViewModel @Inject constructor(
 
     fun connect() {
         val state = _uiState.value
-        if (state.hostName.isBlank() || state.userName.isBlank()) return
+        if (state.ipAddress.isBlank() && state.pcName.isBlank()) return
+        if (state.userName.isBlank()) return
 
         _uiState.value = state.copy(isConnecting = true, error = null)
 
         viewModelScope.launch(dispatchers.io) {
-            val result = connectToHostUseCase(
-                hostName = state.hostName,
-                userName = state.userName,
-                password = state.password
-            )
-            when (result) {
-                is AppResult.Success -> {
-                    _uiState.value = _uiState.value.copy(
-                        isConnecting = false,
-                        isConnected = true
-                    )
-                    _navigateToBoowse.emit(Unit)
-                }
-                is AppResult.Error -> {
-                    _uiState.value = _uiState.value.copy(
-                        isConnecting = false,
-                        error = result.message
-                    )
+            // Try IP first, then fall back to PC name
+            val targets = buildList {
+                if (state.ipAddress.isNotBlank()) add(state.ipAddress)
+                if (state.pcName.isNotBlank() && state.pcName != state.ipAddress) add(state.pcName)
+            }
+
+            var lastError: String? = null
+            for (target in targets) {
+                val result = connectToHostUseCase(
+                    hostName = target,
+                    pcName = state.pcName,
+                    userName = state.userName,
+                    password = state.password
+                )
+                when (result) {
+                    is AppResult.Success -> {
+                        _uiState.value = _uiState.value.copy(
+                            isConnecting = false,
+                            isConnected = true
+                        )
+                        _navigateToBoowse.emit(Unit)
+                        return@launch
+                    }
+                    is AppResult.Error -> {
+                        lastError = result.message
+                    }
                 }
             }
+
+            _uiState.value = _uiState.value.copy(
+                isConnecting = false,
+                error = lastError
+            )
         }
     }
 
@@ -116,7 +135,8 @@ class ConnectViewModel @Inject constructor(
 
     fun onDeviceSelected(device: DiscoveredDevice) {
         _uiState.value = _uiState.value.copy(
-            hostName = device.ipAddress,
+            pcName = device.hostName ?: "",
+            ipAddress = device.ipAddress,
             showDiscoveryDialog = false,
             discoveryState = null,
             error = null
