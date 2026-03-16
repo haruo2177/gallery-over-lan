@@ -39,50 +39,59 @@ fun DeviceDiscoveryDialog(
         title = { Text("ネットワーク探索") },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                when (scanState) {
-                    null, is LanScanState.Scanning -> {
-                        val progress = (scanState as? LanScanState.Scanning)?.progress ?: 0f
-                        val devices = (scanState as? LanScanState.Scanning)?.devicesFound ?: emptyList()
+                val isScanning = scanState == null || scanState is LanScanState.Scanning
+                val progress = (scanState as? LanScanState.Scanning)?.progress ?: 0f
+                val devices = when (scanState) {
+                    null -> emptyList()
+                    is LanScanState.Scanning -> scanState.devicesFound
+                    is LanScanState.Completed -> scanState.devices
+                    is LanScanState.Error -> emptyList()
+                }.sortedBy { it.displayName.lowercase() }
 
-                        Text(
-                            text = "SMBデバイスをスキャン中... (${(progress * 100).toInt()}%)",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        LinearProgressIndicator(
-                            progress = { progress },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        if (devices.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            DeviceList(devices = devices, onDeviceSelected = onDeviceSelected)
-                        }
-                    }
-
-                    is LanScanState.Completed -> {
-                        if (scanState.devices.isEmpty()) {
-                            Text(
-                                text = "SMBデバイスが見つかりませんでした",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        } else {
-                            Text(
-                                text = "${scanState.devices.size}台のデバイスが見つかりました",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            DeviceList(devices = scanState.devices, onDeviceSelected = onDeviceSelected)
-                        }
-                    }
-
-                    is LanScanState.Error -> {
+                // Status text
+                when {
+                    scanState is LanScanState.Error -> {
                         Text(
                             text = scanState.message,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
+                    isScanning -> {
+                        Text(
+                            text = "SMBデバイスをスキャン中... (${(progress * 100).toInt()}%)",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    devices.isEmpty() -> {
+                        Text(
+                            text = "SMBデバイスが見つかりませんでした",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    else -> {
+                        Text(
+                            text = "${devices.size}台のデバイスが見つかりました",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+
+                // Progress bar - always reserve space to prevent jitter
+                Spacer(modifier = Modifier.height(8.dp))
+                if (isScanning) {
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
+                // Device list - always reserve space to prevent jitter
+                if (devices.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    DeviceList(devices = devices, onDeviceSelected = onDeviceSelected)
                 }
             }
         },

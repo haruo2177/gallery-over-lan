@@ -1,5 +1,6 @@
 package com.example.galleryoverlan.ui.viewer
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -9,29 +10,28 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,13 +51,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.SubcomposeAsyncImage
 import com.example.galleryoverlan.domain.model.SlideshowState
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ViewerScreen(
     onNavigateBack: () -> Unit,
     viewModel: ViewerViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    BackHandler {
+        viewModel.stopSlideshow()
+        onNavigateBack()
+    }
 
     Box(
         modifier = Modifier
@@ -147,91 +151,77 @@ fun ViewerScreen(
                 }
             }
 
-            // Top bar overlay
+            // Top info overlay
             AnimatedVisibility(
                 visible = state.showControls,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                TopAppBar(
-                    title = {
-                        Text(text = state.positionText, color = Color.White)
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            viewModel.stopSlideshow()
-                            onNavigateBack()
-                        }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "戻る",
-                                tint = Color.White
-                            )
-                        }
-                    },
-                    actions = {
-                        // Interval picker button
-                        IconButton(onClick = viewModel::toggleIntervalPicker) {
-                            Icon(
-                                Icons.Filled.Timer,
-                                contentDescription = "間隔設定",
-                                tint = Color.White
-                            )
-                        }
-                        // Play/Pause button
-                        IconButton(onClick = viewModel::toggleSlideshow) {
-                            Icon(
-                                imageVector = if (state.isPlaying) {
-                                    Icons.Filled.Pause
-                                } else {
-                                    Icons.Filled.PlayArrow
-                                },
-                                contentDescription = if (state.isPlaying) "一時停止" else "スライドショー開始",
-                                tint = Color.White
-                            )
-                        }
-                        // Stop button (visible when not idle)
-                        if (state.slideshowState !is SlideshowState.Idle) {
-                            IconButton(onClick = viewModel::stopSlideshow) {
-                                Icon(
-                                    Icons.Filled.Stop,
-                                    contentDescription = "停止",
-                                    tint = Color.White
-                                )
-                            }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Black.copy(alpha = 0.5f)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .windowInsetsPadding(WindowInsets.statusBars)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = state.positionText,
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = state.currentImage?.name ?: "",
+                        color = Color.White.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
 
-            // Bottom info overlay
+            // Bottom controls overlay
             AnimatedVisibility(
                 visible = state.showControls,
                 enter = fadeIn(),
                 exit = fadeOut(),
                 modifier = Modifier.align(Alignment.BottomCenter)
             ) {
-                Column(
+                Row(
                     modifier = Modifier
-                        .fillMaxWidth()
                         .background(Color.Black.copy(alpha = 0.5f))
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = state.currentImage?.name ?: "",
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    if (state.slideshowState !is SlideshowState.Idle) {
-                        Text(
-                            text = "スライドショー: ${state.slideshowIntervalMs / 1000}秒間隔",
-                            color = Color.White.copy(alpha = 0.7f),
-                            style = MaterialTheme.typography.labelSmall
+                    // Interval picker button
+                    IconButton(onClick = viewModel::toggleIntervalPicker) {
+                        Icon(
+                            Icons.Filled.Timer,
+                            contentDescription = "間隔設定",
+                            tint = Color.White
                         )
+                    }
+                    // Play/Pause button
+                    IconButton(onClick = viewModel::toggleSlideshow) {
+                        Icon(
+                            imageVector = if (state.isPlaying) {
+                                Icons.Filled.Pause
+                            } else {
+                                Icons.Filled.PlayArrow
+                            },
+                            contentDescription = if (state.isPlaying) "一時停止" else "スライドショー開始",
+                            tint = Color.White
+                        )
+                    }
+                    // Stop button (visible when not idle)
+                    if (state.slideshowState !is SlideshowState.Idle) {
+                        IconButton(onClick = viewModel::stopSlideshow) {
+                            Icon(
+                                Icons.Filled.Stop,
+                                contentDescription = "停止",
+                                tint = Color.White
+                            )
+                        }
                     }
                 }
             }

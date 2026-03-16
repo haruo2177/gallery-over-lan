@@ -56,10 +56,8 @@ fun ConnectScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -95,14 +93,12 @@ fun ConnectScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
             Button(
                 onClick = viewModel::connect,
                 enabled = !state.isConnecting &&
                     state.hostName.isNotBlank() &&
                     state.userName.isNotBlank(),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.align(Alignment.End)
             ) {
                 if (state.isConnecting) {
                     CircularProgressIndicator(
