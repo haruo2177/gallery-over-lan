@@ -85,6 +85,9 @@ dependencies {
     // Image loading
     implementation(libs.coil.compose)
 
+    // EXIF
+    implementation(libs.androidx.exifinterface)
+
     // SMB
     implementation(libs.smbj)
 
