@@ -4,8 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,7 +41,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -95,6 +96,8 @@ fun ViewerScreen(
                     .collect { viewModel.onPageChanged(it) }
             }
 
+            val tapAreaRatio = 0.25f
+
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
@@ -102,10 +105,31 @@ fun ViewerScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() }
-                        ) { viewModel.toggleControls() },
+                        .pointerInput(Unit) {
+                            detectTapGestures { offset: Offset ->
+                                val width = size.width.toFloat()
+                                when {
+                                    offset.x < width * tapAreaRatio -> {
+                                        // 左1/4タップ → 前の画像
+                                        val prev = pagerState.currentPage - 1
+                                        if (prev >= 0) {
+                                            viewModel.onPageChanged(prev)
+                                        }
+                                    }
+                                    offset.x > width * (1f - tapAreaRatio) -> {
+                                        // 右1/4タップ → 次の画像
+                                        val next = pagerState.currentPage + 1
+                                        if (next < state.images.size) {
+                                            viewModel.onPageChanged(next)
+                                        }
+                                    }
+                                    else -> {
+                                        // 中央タップ → コントロール表示切替
+                                        viewModel.toggleControls()
+                                    }
+                                }
+                            }
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     SubcomposeAsyncImage(

@@ -23,8 +23,13 @@ import java.io.File
 
 data class SmbImageRequest(
     val path: String,
-    val thumbnail: Boolean = false
-)
+    val thumbnail: Boolean = false,
+    val thumbnailSizePx: Int = DEFAULT_thumbnailSize
+) {
+    companion object {
+        const val DEFAULT_thumbnailSize = 128
+    }
+}
 
 class SmbImageFetcher(
     private val data: SmbImageRequest,
@@ -33,9 +38,7 @@ class SmbImageFetcher(
     private val context: Context
 ) : Fetcher {
 
-    companion object {
-        private const val THUMBNAIL_SIZE = 256
-    }
+    private val thumbnailSize: Int = data.thumbnailSizePx
 
     override suspend fun fetch(): FetchResult {
         // Check thumbnail cache first
@@ -95,7 +98,7 @@ class SmbImageFetcher(
 
             val sampleSize = calculateInSampleSize(
                 options.outWidth, options.outHeight,
-                THUMBNAIL_SIZE, THUMBNAIL_SIZE
+                thumbnailSize, thumbnailSize
             )
 
             val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
@@ -116,7 +119,7 @@ class SmbImageFetcher(
             val cropped = Bitmap.createBitmap(bitmap, x, y, cropSize, cropSize)
             if (cropped != bitmap) bitmap.recycle()
 
-            val scaled = Bitmap.createScaledBitmap(cropped, THUMBNAIL_SIZE, THUMBNAIL_SIZE, true)
+            val scaled = Bitmap.createScaledBitmap(cropped, thumbnailSize, thumbnailSize, true)
             if (scaled != cropped) cropped.recycle()
 
             val output = ByteArrayOutputStream()
@@ -170,7 +173,7 @@ class SmbImageFetcher(
 
     class SmbImageKeyer : Keyer<SmbImageRequest> {
         override fun key(data: SmbImageRequest, options: Options): String {
-            return if (data.thumbnail) "smb_thumb:${data.path}" else "smb_full:${data.path}"
+            return if (data.thumbnail) "smb_thumb:${data.thumbnailSizePx}:${data.path}" else "smb_full:${data.path}"
         }
     }
 

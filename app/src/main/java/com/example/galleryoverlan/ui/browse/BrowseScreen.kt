@@ -56,6 +56,8 @@ import com.example.galleryoverlan.domain.model.SortOrder
 import com.example.galleryoverlan.ui.navigation.Routes
 import com.example.galleryoverlan.ui.viewer.SmbImageRequest
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -274,7 +276,7 @@ private fun FolderContents(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text("このフォルダは空です")
+            Text("このフォルダにフォルダや画像はありません")
         }
         return
     }
@@ -282,6 +284,10 @@ private fun FolderContents(
     val gridState = rememberLazyGridState()
     val context = LocalContext.current
     val imageLoader = remember { coil.Coil.imageLoader(context) }
+    val density = LocalDensity.current
+    val cellSizePx = remember(density) {
+        with(density) { 120.dp.toPx().roundToInt() }
+    }
 
     // Prefetch images beyond visible area
     val prefetchRange = 20
@@ -297,8 +303,8 @@ private fun FolderContents(
         val prefetchEnd = (prefetchStart + prefetchRange).coerceAtMost(state.images.size)
         for (i in prefetchStart until prefetchEnd) {
             val request = ImageRequest.Builder(context)
-                .data(SmbImageRequest(path = state.images[i].path, thumbnail = true))
-                .size(256)
+                .data(SmbImageRequest(path = state.images[i].path, thumbnail = true, thumbnailSizePx = cellSizePx))
+                .size(cellSizePx)
                 .build()
             imageLoader.enqueue(request)
         }
@@ -341,8 +347,8 @@ private fun FolderContents(
             items = state.images,
             key = { _, image -> "image:${image.path}" }
         ) { index, image ->
-            val model = remember(image.path) {
-                SmbImageRequest(path = image.path, thumbnail = true)
+            val model = remember(image.path, cellSizePx) {
+                SmbImageRequest(path = image.path, thumbnail = true, thumbnailSizePx = cellSizePx)
             }
             AsyncImage(
                 model = model,
