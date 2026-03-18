@@ -5,7 +5,8 @@ import javax.inject.Inject
 
 class CompositeHostResolver @Inject constructor(
     private val defaultResolver: DefaultHostResolver,
-    private val netBiosResolver: NetBiosNameResolver
+    private val netBiosResolver: NetBiosNameResolver,
+    private val mdnsResolver: MdnsNameResolver
 ) : HostResolver {
 
     companion object {
@@ -20,7 +21,14 @@ class CompositeHostResolver @Inject constructor(
         try {
             return defaultResolver.resolve(hostName)
         } catch (e: Exception) {
-            AppLogger.w("DNS resolution failed for $hostName, trying NetBIOS", tag = TAG)
+            AppLogger.w("DNS resolution failed for $hostName, trying mDNS/NetBIOS", tag = TAG)
+        }
+
+        // Fallback: mDNS (.local) resolution
+        val mdnsIp = mdnsResolver.resolveNameToIp(hostName)
+        if (mdnsIp != null) {
+            AppLogger.i("mDNS resolved $hostName -> $mdnsIp", TAG)
+            return mdnsIp
         }
 
         // Fallback: NetBIOS broadcast name query

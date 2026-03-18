@@ -3,6 +3,7 @@ package com.example.galleryoverlan.data.network
 import android.content.Context
 import android.net.ConnectivityManager
 import com.example.galleryoverlan.core.dispatchers.AppDispatchers
+import com.example.galleryoverlan.data.smb.MdnsNameResolver
 import com.example.galleryoverlan.data.smb.NetBiosNameResolver
 import com.example.galleryoverlan.domain.model.DiscoveredDevice
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,7 +26,8 @@ import javax.inject.Singleton
 class LanScannerImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dispatchers: AppDispatchers,
-    private val netBiosResolver: NetBiosNameResolver
+    private val netBiosResolver: NetBiosNameResolver,
+    private val mdnsResolver: MdnsNameResolver
 ) : LanScanner {
 
     companion object {
@@ -117,7 +119,9 @@ class LanScannerImpl @Inject constructor(
 
     private suspend fun resolveHostName(ip: String): String? {
         return withContext(dispatchers.io) {
-            netBiosResolver.resolveIpToName(ip) ?: resolveReverseDns(ip)
+            netBiosResolver.resolveIpToName(ip)
+                ?: mdnsResolver.resolveIpToName(ip)
+                ?: resolveReverseDns(ip)
         }
     }
 
