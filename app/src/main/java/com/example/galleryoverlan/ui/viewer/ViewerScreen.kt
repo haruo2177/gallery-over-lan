@@ -128,17 +128,24 @@ fun ViewerScreen(
 
             val tapAreaRatio = 0.25f
 
+            val isPlaying = state.slideshowState is SlideshowState.Playing
+
             HorizontalPager(
                 state = pagerState,
+                userScrollEnabled = !isPlaying,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pointerInput(Unit) {
+                        .pointerInput(isPlaying) {
                             detectTapGestures { offset: Offset ->
                                 val width = size.width.toFloat()
                                 when {
+                                    isPlaying -> {
+                                        // スライドショー中は中央タップ（コントロール表示）のみ有効
+                                        viewModel.toggleControls()
+                                    }
                                     offset.x < width * tapAreaRatio -> {
                                         // 左1/4タップ → 前の画像
                                         val prev = pagerState.currentPage - 1
@@ -167,10 +174,15 @@ fun ViewerScreen(
                         contentDescription = state.images[page].name,
                         contentScale = ContentScale.Fit,
                         loading = {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(48.dp),
-                                color = Color.White
-                            )
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = Color.White
+                                )
+                            }
                         },
                         modifier = Modifier.fillMaxSize()
                     )
