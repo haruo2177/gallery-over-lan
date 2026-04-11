@@ -93,9 +93,7 @@ fun BrowseScreen(
 
     // Restore scroll position when folder contents change
     LaunchedEffect(state.currentPath, state.targetScrollIndex) {
-        if (state.targetScrollIndex > 0) {
-            gridState.scrollToItem(state.targetScrollIndex)
-        }
+        gridState.scrollToItem(state.targetScrollIndex)
     }
 
     LaunchedEffect(Unit) {
