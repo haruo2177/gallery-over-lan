@@ -36,6 +36,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.BottomAppBar
@@ -157,6 +158,9 @@ fun BrowseScreen(
             if (state.level is BrowseLevel.Folder) {
                 BottomAppBar {
                     Spacer(modifier = Modifier.weight(1f))
+                    IconButton(onClick = viewModel::showRandomDialog) {
+                        Icon(Icons.Filled.Casino, contentDescription = "ランダム")
+                    }
                     IconButton(onClick = viewModel::toggleSearchPanel) {
                         if (state.isSearchActive) {
                             BadgedBox(
@@ -197,6 +201,20 @@ fun BrowseScreen(
                     onHistoryItemClick = viewModel::onHistoryItemClick,
                     onHistoryItemDelete = viewModel::onHistoryItemDelete,
                     onClearHistory = viewModel::clearSearchHistory
+                )
+
+                RandomFolderDialog(
+                    visible = state.showRandomDialog,
+                    folders = state.randomFolders,
+                    count = state.randomCount,
+                    onCountChange = viewModel::updateRandomCount,
+                    onReshuffle = viewModel::reshuffleRandom,
+                    onFolderClick = { path ->
+                        viewModel.hideRandomDialog()
+                        viewModel.saveScrollPosition(gridState.firstVisibleItemIndex)
+                        viewModel.navigateTo(path)
+                    },
+                    onDismiss = viewModel::hideRandomDialog
                 )
             }
 

@@ -26,7 +26,11 @@ data class BrowseUiState(
     val searchHistory: List<SearchHistoryEntry> = emptyList(),
     val isSearchActive: Boolean = false,
     val filteredFolders: List<FolderItem>? = null,
-    val filteredImages: List<ImageItem>? = null
+    val filteredImages: List<ImageItem>? = null,
+    // Random
+    val showRandomDialog: Boolean = false,
+    val randomFolders: List<FolderItem> = emptyList(),
+    val randomCount: Int = 7
 ) {
     val displayFolders: List<FolderItem> get() = filteredFolders ?: folders
     val displayImages: List<ImageItem> get() = filteredImages ?: images

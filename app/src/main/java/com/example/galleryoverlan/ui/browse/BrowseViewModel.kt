@@ -16,7 +16,9 @@ import com.example.galleryoverlan.domain.usecase.BrowseFoldersUseCase
 import com.example.galleryoverlan.domain.usecase.ConnectToShareUseCase
 import com.example.galleryoverlan.domain.usecase.ListImagesUseCase
 import com.example.galleryoverlan.domain.usecase.ListSharesUseCase
+import android.content.Context
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -35,8 +37,13 @@ class BrowseViewModel @Inject constructor(
     private val listImagesUseCase: ListImagesUseCase,
     private val smbRepository: SmbRepository,
     private val dispatchers: AppDispatchers,
-    private val searchHistoryRepository: SearchHistoryRepository
+    private val searchHistoryRepository: SearchHistoryRepository,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
+
+    private val randomPrefs by lazy {
+        appContext.getSharedPreferences("random_folder", Context.MODE_PRIVATE)
+    }
 
     private val _uiState = MutableStateFlow(BrowseUiState())
     val uiState: StateFlow<BrowseUiState> = _uiState.asStateFlow()
@@ -421,6 +428,46 @@ class BrowseViewModel @Inject constructor(
             SortOrder.SIZE_ASC -> images.sortedBy { it.sizeBytes }
             SortOrder.SIZE_DESC -> images.sortedByDescending { it.sizeBytes }
         }
+    }
+
+    // Random folders
+
+    fun showRandomDialog() {
+        val state = _uiState.value
+        val count = randomPrefs.getInt("random_count", 7)
+        val sourceFolders = state.displayFolders
+        val picked = if (sourceFolders.size <= count) {
+            sourceFolders.shuffled()
+        } else {
+            sourceFolders.shuffled().take(count)
+        }
+        _uiState.value = state.copy(
+            showRandomDialog = true,
+            randomFolders = picked,
+            randomCount = count
+        )
+    }
+
+    fun hideRandomDialog() {
+        _uiState.value = _uiState.value.copy(showRandomDialog = false)
+    }
+
+    fun updateRandomCount(count: Int) {
+        val clamped = count.coerceIn(1, 50)
+        randomPrefs.edit().putInt("random_count", clamped).apply()
+        _uiState.value = _uiState.value.copy(randomCount = clamped)
+    }
+
+    fun reshuffleRandom() {
+        val state = _uiState.value
+        val sourceFolders = state.displayFolders
+        val count = state.randomCount
+        val picked = if (sourceFolders.size <= count) {
+            sourceFolders.shuffled()
+        } else {
+            sourceFolders.shuffled().take(count)
+        }
+        _uiState.value = state.copy(randomFolders = picked)
     }
 
     override fun onCleared() {
