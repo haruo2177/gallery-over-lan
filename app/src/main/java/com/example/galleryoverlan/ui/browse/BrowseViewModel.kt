@@ -4,8 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.galleryoverlan.core.dispatchers.AppDispatchers
 import com.example.galleryoverlan.core.result.AppResult
+import com.example.galleryoverlan.data.search.SearchHistoryEntry
+import com.example.galleryoverlan.data.search.SearchHistoryRepository
 import com.example.galleryoverlan.data.smb.SmbRepository
+import com.example.galleryoverlan.domain.model.FolderItem
 import com.example.galleryoverlan.domain.model.ImageItem
+import com.example.galleryoverlan.domain.model.SearchMode
+import com.example.galleryoverlan.domain.model.SearchOptions
 import com.example.galleryoverlan.domain.model.SortOrder
 import com.example.galleryoverlan.domain.usecase.BrowseFoldersUseCase
 import com.example.galleryoverlan.domain.usecase.ConnectToShareUseCase
@@ -29,7 +34,8 @@ class BrowseViewModel @Inject constructor(
     private val browseFoldersUseCase: BrowseFoldersUseCase,
     private val listImagesUseCase: ListImagesUseCase,
     private val smbRepository: SmbRepository,
-    private val dispatchers: AppDispatchers
+    private val dispatchers: AppDispatchers,
+    private val searchHistoryRepository: SearchHistoryRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BrowseUiState())
@@ -146,14 +152,24 @@ class BrowseViewModel @Inject constructor(
             breadcrumbs = buildBreadcrumbs(path),
             isLoading = false,
             error = null,
-            targetScrollIndex = scrollPositionCache[path] ?: 0
+            targetScrollIndex = scrollPositionCache[path] ?: 0,
+            filteredFolders = null,
+            filteredImages = null,
+            isSearchActive = false,
+            searchQuery = ""
         )
     }
 
     fun onImageClick(imageIndex: Int) {
         val state = _uiState.value
+        val actualIndex = if (state.isSearchActive && state.filteredImages != null) {
+            val clickedImage = state.filteredImages[imageIndex]
+            state.images.indexOf(clickedImage)
+        } else {
+            imageIndex
+        }
         viewModelScope.launch {
-            _navigateToViewer.emit(state.currentPath to imageIndex)
+            _navigateToViewer.emit(state.currentPath to actualIndex)
         }
     }
 
@@ -161,7 +177,6 @@ class BrowseViewModel @Inject constructor(
         if (item.path.isEmpty() && _uiState.value.level == BrowseLevel.Folder &&
             _uiState.value.currentPath.isEmpty()
         ) {
-            // Already at share root, go back to shares
             goBackToShares()
             return
         }
@@ -196,23 +211,15 @@ class BrowseViewModel @Inject constructor(
                 currentPath = "",
                 folders = emptyList(),
                 images = emptyList(),
-                breadcrumbs = listOf(BrowseBreadcrumbItem("共有一覧", ""))
+                breadcrumbs = listOf(BrowseBreadcrumbItem("共有一覧", "")),
+                showSearchPanel = false,
+                isSearchActive = false,
+                searchQuery = "",
+                filteredFolders = null,
+                filteredImages = null
             )
             loadShares()
         }
-    }
-
-    fun onSortOrderChange(order: SortOrder) {
-        val state = _uiState.value
-        _uiState.value = state.copy(
-            sortOrder = order,
-            showSortMenu = false,
-            images = sortImages(state.images, order)
-        )
-    }
-
-    fun toggleSortMenu() {
-        _uiState.value = _uiState.value.copy(showSortMenu = !_uiState.value.showSortMenu)
     }
 
     fun refresh() {
@@ -225,6 +232,152 @@ class BrowseViewModel @Inject constructor(
                 is BrowseLevel.Folder -> loadFolderContents(state.currentPath)
             }
         }
+    }
+
+    // Search
+
+    fun toggleSearchPanel() {
+        val state = _uiState.value
+        val newShow = !state.showSearchPanel
+        _uiState.value = state.copy(
+            showSearchPanel = newShow,
+            searchHistory = if (newShow) searchHistoryRepository.getHistory() else state.searchHistory
+        )
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _uiState.value = _uiState.value.copy(searchQuery = query)
+    }
+
+    fun onSearchOptionsChange(options: SearchOptions) {
+        _uiState.value = _uiState.value.copy(searchOptions = options)
+    }
+
+    fun executeSearch() {
+        val state = _uiState.value
+        val query = state.searchQuery.trim()
+        if (query.isEmpty() && state.searchOptions.excludeQuery.isBlank()) {
+            clearSearch()
+            return
+        }
+
+        searchHistoryRepository.addEntry(query, state.searchOptions)
+
+        val filtered = applySearch(state.folders, state.images, query, state.searchOptions)
+        _uiState.value = state.copy(
+            filteredFolders = filtered.first,
+            filteredImages = filtered.second,
+            isSearchActive = true,
+            showSearchPanel = false,
+            searchHistory = searchHistoryRepository.getHistory()
+        )
+    }
+
+    fun clearSearch() {
+        _uiState.value = _uiState.value.copy(
+            filteredFolders = null,
+            filteredImages = null,
+            isSearchActive = false,
+            searchQuery = "",
+            searchOptions = _uiState.value.searchOptions.copy(excludeQuery = "")
+        )
+    }
+
+    fun onHistoryItemClick(entry: SearchHistoryEntry) {
+        _uiState.value = _uiState.value.copy(
+            searchQuery = entry.query,
+            searchOptions = entry.options
+        )
+    }
+
+    fun onHistoryItemDelete(query: String) {
+        searchHistoryRepository.removeEntry(query)
+        _uiState.value = _uiState.value.copy(
+            searchHistory = searchHistoryRepository.getHistory()
+        )
+    }
+
+    fun clearSearchHistory() {
+        searchHistoryRepository.clearHistory()
+        _uiState.value = _uiState.value.copy(searchHistory = emptyList())
+    }
+
+    private fun applySearch(
+        folders: List<FolderItem>,
+        images: List<ImageItem>,
+        query: String,
+        options: SearchOptions
+    ): Pair<List<FolderItem>, List<ImageItem>> {
+        val matchFn = buildMatchFunction(query, options)
+        val excludeFn = if (options.excludeQuery.isNotBlank()) {
+            buildMatchFunction(options.excludeQuery, options.copy(excludeQuery = "", mode = SearchMode.OR))
+        } else {
+            null
+        }
+
+        val filteredFolders = folders.filter { folder ->
+            val matches = query.isEmpty() || matchFn(folder.name)
+            val excluded = excludeFn?.invoke(folder.name) ?: false
+            matches && !excluded
+        }
+
+        val filteredImages = images.filter { image ->
+            val matches = query.isEmpty() || matchFn(image.name)
+            val excluded = excludeFn?.invoke(image.name) ?: false
+            matches && !excluded
+        }
+
+        return filteredFolders to filteredImages
+    }
+
+    private fun buildMatchFunction(query: String, options: SearchOptions): (String) -> Boolean {
+        val keywords = query.split("\\s+".toRegex()).filter { it.isNotEmpty() }
+        if (keywords.isEmpty()) return { true }
+
+        val matchers: List<(String) -> Boolean> = keywords.map { kw ->
+            val normalizedKw = normalizeIfNeeded(kw, options)
+            if (options.useWildcard && (normalizedKw.contains('*') || normalizedKw.contains('?'))) {
+                val regexPattern = buildString {
+                    append("^")
+                    for (ch in normalizedKw) {
+                        when (ch) {
+                            '*' -> append(".*")
+                            '?' -> append(".")
+                            else -> append(Regex.escape(ch.toString()))
+                        }
+                    }
+                    append("$")
+                }
+                val regexOpts = if (options.caseSensitive) emptySet() else setOf(RegexOption.IGNORE_CASE)
+                val wcRegex = Regex(regexPattern, regexOpts)
+                val fn: (String) -> Boolean = { text -> wcRegex.containsMatchIn(normalizeIfNeeded(text, options)) }
+                fn
+            } else {
+                val fn: (String) -> Boolean = { text ->
+                    val normalizedText = normalizeIfNeeded(text, options)
+                    if (options.caseSensitive) normalizedText.contains(normalizedKw)
+                    else normalizedText.lowercase().contains(normalizedKw.lowercase())
+                }
+                fn
+            }
+        }
+
+        return { text ->
+            when (options.mode) {
+                SearchMode.AND -> matchers.all { it(text) }
+                SearchMode.OR -> matchers.any { it(text) }
+            }
+        }
+    }
+
+    private fun normalizeIfNeeded(text: String, options: SearchOptions): String {
+        if (!options.kanaUnify) return text
+        return text.map { ch ->
+            when (ch) {
+                in '\u3041'..'\u3096' -> ch + 0x60 // hiragana -> katakana
+                else -> ch
+            }
+        }.joinToString("")
     }
 
     private fun buildBreadcrumbs(path: String): List<BrowseBreadcrumbItem> {

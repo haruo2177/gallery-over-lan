@@ -1,7 +1,9 @@
 package com.example.galleryoverlan.ui.browse
 
+import com.example.galleryoverlan.data.search.SearchHistoryEntry
 import com.example.galleryoverlan.domain.model.FolderItem
 import com.example.galleryoverlan.domain.model.ImageItem
+import com.example.galleryoverlan.domain.model.SearchOptions
 import com.example.galleryoverlan.domain.model.SortOrder
 
 data class BrowseUiState(
@@ -13,12 +15,22 @@ data class BrowseUiState(
     val images: List<ImageItem> = emptyList(),
     val breadcrumbs: List<BrowseBreadcrumbItem> = emptyList(),
     val sortOrder: SortOrder = SortOrder.NAME_ASC,
-    val showSortMenu: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
     val imageLoadError: String? = null,
-    val targetScrollIndex: Int = 0
-)
+    val targetScrollIndex: Int = 0,
+    // Search
+    val showSearchPanel: Boolean = false,
+    val searchQuery: String = "",
+    val searchOptions: SearchOptions = SearchOptions(),
+    val searchHistory: List<SearchHistoryEntry> = emptyList(),
+    val isSearchActive: Boolean = false,
+    val filteredFolders: List<FolderItem>? = null,
+    val filteredImages: List<ImageItem>? = null
+) {
+    val displayFolders: List<FolderItem> get() = filteredFolders ?: folders
+    val displayImages: List<ImageItem> get() = filteredImages ?: images
+}
 
 sealed class BrowseLevel {
     data object Shares : BrowseLevel()
