@@ -11,7 +11,8 @@
 local.properties
 
 # Claude Code
-.claude/
+.claude/*
+!.claude/skills/
 
 # Keystore
 *.jks
