@@ -32,8 +32,8 @@ fun AppNavigation() {
         composable(Routes.BROWSE) {
             BrowseScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToViewer = { folderPath, startIndex ->
-                    navController.navigate(Routes.viewer(folderPath, startIndex))
+                onNavigateToViewer = { folderPath, startIndex, autoSlideshow ->
+                    navController.navigate(Routes.viewer(folderPath, startIndex, autoSlideshow))
                 }
             )
         }
@@ -42,7 +42,11 @@ fun AppNavigation() {
             route = Routes.VIEWER,
             arguments = listOf(
                 navArgument("folderPath") { type = NavType.StringType },
-                navArgument("startIndex") { type = NavType.IntType }
+                navArgument("startIndex") { type = NavType.IntType },
+                navArgument("autoSlideshow") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                }
             )
         ) {
             ViewerScreen(

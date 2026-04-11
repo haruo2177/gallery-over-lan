@@ -15,7 +15,8 @@ data class BrowseUiState(
     val sortOrder: SortOrder = SortOrder.NAME_ASC,
     val showSortMenu: Boolean = false,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val targetScrollIndex: Int = 0
 )
 
 sealed class BrowseLevel {

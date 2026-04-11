@@ -40,6 +40,8 @@ class BrowseViewModel @Inject constructor(
     private val _navigateBack = MutableSharedFlow<Unit>()
     val navigateBack: SharedFlow<Unit> = _navigateBack.asSharedFlow()
 
+    private val scrollPositionCache = mutableMapOf<String, Int>()
+
     init {
         loadShares()
     }
@@ -90,6 +92,10 @@ class BrowseViewModel @Inject constructor(
         }
     }
 
+    fun saveScrollPosition(firstVisibleItemIndex: Int) {
+        scrollPositionCache[_uiState.value.currentPath] = firstVisibleItemIndex
+    }
+
     fun navigateTo(path: String) {
         viewModelScope.launch(dispatchers.io) {
             _uiState.value = _uiState.value.copy(
@@ -125,7 +131,8 @@ class BrowseViewModel @Inject constructor(
             folders = folders,
             images = images,
             breadcrumbs = buildBreadcrumbs(path),
-            isLoading = false
+            isLoading = false,
+            targetScrollIndex = scrollPositionCache[path] ?: 0
         )
     }
 

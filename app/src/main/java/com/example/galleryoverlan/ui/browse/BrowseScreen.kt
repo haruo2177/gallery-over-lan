@@ -18,12 +18,14 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.remember
@@ -63,14 +65,22 @@ import kotlin.math.roundToInt
 @Composable
 fun BrowseScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToViewer: (folderPath: String, startIndex: Int) -> Unit,
+    onNavigateToViewer: (folderPath: String, startIndex: Int, autoSlideshow: Boolean) -> Unit,
     viewModel: BrowseViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val gridState = rememberLazyGridState()
+
+    // Restore scroll position when folder contents change
+    LaunchedEffect(state.currentPath, state.targetScrollIndex) {
+        if (state.targetScrollIndex > 0) {
+            gridState.scrollToItem(state.targetScrollIndex)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.navigateToViewer.collect { (folderPath, index) ->
-            onNavigateToViewer(folderPath, index)
+            onNavigateToViewer(folderPath, index, false)
         }
     }
 
@@ -81,6 +91,7 @@ fun BrowseScreen(
     }
 
     BackHandler {
+        viewModel.saveScrollPosition(gridState.firstVisibleItemIndex)
         if (!viewModel.onBackPressed()) {
             onNavigateBack()
         }
@@ -97,6 +108,7 @@ fun BrowseScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = {
+                        viewModel.saveScrollPosition(gridState.firstVisibleItemIndex)
                         if (!viewModel.onBackPressed()) {
                             onNavigateBack()
                         }
@@ -105,6 +117,13 @@ fun BrowseScreen(
                     }
                 },
                 actions = {
+                    if (state.level is BrowseLevel.Folder && state.images.isNotEmpty()) {
+                        IconButton(onClick = {
+                            onNavigateToViewer(state.currentPath, 0, true)
+                        }) {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = "スライドショー")
+                        }
+                    }
                     if (state.level is BrowseLevel.Folder) {
                         Box {
                             IconButton(onClick = viewModel::toggleSortMenu) {
@@ -148,7 +167,10 @@ fun BrowseScreen(
             if (state.level is BrowseLevel.Folder) {
                 BrowseBreadcrumb(
                     items = state.breadcrumbs,
-                    onItemClick = viewModel::onBreadcrumbClick
+                    onItemClick = { item ->
+                        viewModel.saveScrollPosition(gridState.firstVisibleItemIndex)
+                        viewModel.onBreadcrumbClick(item)
+                    }
                 )
             }
 
@@ -179,7 +201,11 @@ fun BrowseScreen(
                     else -> {
                         FolderContents(
                             state = state,
-                            onFolderClick = viewModel::navigateTo,
+                            gridState = gridState,
+                            onFolderClick = { path ->
+                                viewModel.saveScrollPosition(gridState.firstVisibleItemIndex)
+                                viewModel.navigateTo(path)
+                            },
                             onImageClick = viewModel::onImageClick
                         )
                     }
@@ -268,6 +294,7 @@ private fun SharesList(
 @Composable
 private fun FolderContents(
     state: BrowseUiState,
+    gridState: LazyGridState,
     onFolderClick: (String) -> Unit,
     onImageClick: (Int) -> Unit
 ) {
@@ -281,7 +308,6 @@ private fun FolderContents(
         return
     }
 
-    val gridState = rememberLazyGridState()
     val context = LocalContext.current
     val imageLoader = remember { coil.Coil.imageLoader(context) }
     val density = LocalDensity.current

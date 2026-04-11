@@ -30,6 +30,7 @@ class ViewerViewModel @Inject constructor(
         savedStateHandle.get<String>("folderPath")
     )
     private val startIndex: Int = savedStateHandle["startIndex"] ?: 0
+    private val autoSlideshow: Boolean = savedStateHandle["autoSlideshow"] ?: false
 
     private val _uiState = MutableStateFlow(ViewerUiState())
     val uiState: StateFlow<ViewerUiState> = _uiState.asStateFlow()
@@ -55,6 +56,10 @@ class ViewerViewModel @Inject constructor(
                     isLoading = false,
                     error = result.message
                 )
+            }
+
+            if (autoSlideshow && _uiState.value.images.isNotEmpty()) {
+                startSlideshow()
             }
         }
     }

@@ -6,10 +6,10 @@ import java.net.URLEncoder
 object Routes {
     const val CONNECT = "connect"
     const val BROWSE = "browse"
-    const val VIEWER = "viewer/{folderPath}/{startIndex}"
+    const val VIEWER = "viewer/{folderPath}/{startIndex}?autoSlideshow={autoSlideshow}"
 
-    fun viewer(folderPath: String, startIndex: Int): String =
-        "viewer/${encode(folderPath)}/$startIndex"
+    fun viewer(folderPath: String, startIndex: Int, autoSlideshow: Boolean = false): String =
+        "viewer/${encode(folderPath)}/$startIndex?autoSlideshow=$autoSlideshow"
 
     fun decodePath(encoded: String?): String =
         if (encoded.isNullOrBlank()) "" else URLDecoder.decode(encoded, "UTF-8")
