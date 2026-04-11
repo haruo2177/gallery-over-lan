@@ -107,18 +107,15 @@ class SmbRepositoryImpl @Inject constructor(
     }
 
     override suspend fun listFolders(path: String): AppResult<List<FolderItem>> {
-        ensureConnected()
-        return smbClient.listFolders(path)
+        return withReconnectRetry { smbClient.listFolders(path) }
     }
 
     override suspend fun listImages(path: String): AppResult<List<ImageItem>> {
-        ensureConnected()
-        return smbClient.listImages(path)
+        return withReconnectRetry { smbClient.listImages(path) }
     }
 
     override suspend fun readImageStream(path: String): AppResult<InputStream> {
-        ensureConnected()
-        return smbClient.readImageStream(path)
+        return withReconnectRetry { smbClient.readImageStream(path) }
     }
 
     override suspend fun disconnect() {
@@ -132,6 +129,27 @@ class SmbRepositoryImpl @Inject constructor(
     override fun isConnected(): Boolean = smbClient.isConnected
 
     override fun isHostConnected(): Boolean = smbClient.isHostConnected
+
+    private suspend fun <T> withReconnectRetry(
+        operation: suspend () -> AppResult<T>
+    ): AppResult<T> {
+        ensureConnected()
+        val result = operation()
+        if (result is AppResult.Error && isConnectionError(result.exception)) {
+            AppLogger.i("Operation failed with connection error, retrying after reconnect", TAG)
+            smbClient.disconnect()
+            val reconnect = connectWithSavedConfig()
+            if (reconnect is AppResult.Error) return reconnect
+            return operation()
+        }
+        return result
+    }
+
+    private fun isConnectionError(error: Throwable?): Boolean {
+        return error is SmbError.NetworkUnreachable ||
+            error is SmbError.Timeout ||
+            (error is SmbError.Unknown && error.cause !is IllegalStateException)
+    }
 
     private suspend fun ensureConnected() {
         if (!smbClient.isConnected) {
