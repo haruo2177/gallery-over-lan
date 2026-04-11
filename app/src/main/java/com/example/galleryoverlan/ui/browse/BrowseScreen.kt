@@ -196,7 +196,8 @@ fun BrowseScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
                                 onClick = viewModel::refresh,
-                                enabled = !state.isLoading
+                                enabled = !state.isLoading,
+                                modifier = Modifier.width(96.dp)
                             ) {
                                 if (state.isLoading) {
                                     CircularProgressIndicator(
@@ -204,9 +205,9 @@ fun BrowseScreen(
                                         strokeWidth = 2.dp,
                                         color = MaterialTheme.colorScheme.onPrimary
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                } else {
+                                    Text("再試行")
                                 }
-                                Text("再試行")
                             }
                         }
                     }

@@ -21,10 +21,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Timer
@@ -87,7 +87,8 @@ fun ViewerScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = viewModel::retry,
-                    enabled = !state.isLoading
+                    enabled = !state.isLoading,
+                    modifier = Modifier.width(96.dp)
                 ) {
                     if (state.isLoading) {
                         CircularProgressIndicator(
@@ -95,9 +96,9 @@ fun ViewerScreen(
                             strokeWidth = 2.dp,
                             color = MaterialTheme.colorScheme.onPrimary
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                    } else {
+                        Text("再試行")
                     }
-                    Text("再試行")
                 }
             }
         } else if (state.isLoading) {
@@ -212,54 +213,60 @@ fun ViewerScreen(
             ) {
                 Row(
                     modifier = Modifier
-                        .navigationBarsPadding()
-                        .background(Color.Black.copy(alpha = 0.5f))
-                        .padding(horizontal = 12.dp, vertical = 72.dp),
-                    horizontalArrangement = Arrangement.Center,
+                        .fillMaxWidth()
+                        .navigationBarsPadding(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Interval picker button
-                    IconButton(
-                        onClick = viewModel::toggleIntervalPicker,
-                        modifier = Modifier.size(56.dp)
+                    Spacer(modifier = Modifier.weight(4f))
+                    Row(
+                        modifier = Modifier
+                            .weight(2f)
+                            .background(
+                                Color.Black.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(vertical = 56.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            Icons.Filled.Timer,
-                            contentDescription = "間隔設定",
-                            modifier = Modifier.size(32.dp),
-                            tint = Color.White
-                        )
-                    }
-                    // Play/Pause button
-                    IconButton(
-                        onClick = viewModel::toggleSlideshow,
-                        modifier = Modifier.size(56.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (state.isPlaying) {
-                                Icons.Filled.Pause
-                            } else {
-                                Icons.Filled.PlayArrow
-                            },
-                            contentDescription = if (state.isPlaying) "一時停止" else "スライドショー開始",
-                            modifier = Modifier.size(32.dp),
-                            tint = Color.White
-                        )
-                    }
-                    // Stop button (visible when not idle)
-                    if (state.slideshowState !is SlideshowState.Idle) {
+                        // Interval picker button
                         IconButton(
-                            onClick = viewModel::stopSlideshow,
+                            onClick = viewModel::toggleIntervalPicker,
                             modifier = Modifier.size(56.dp)
                         ) {
                             Icon(
-                                Icons.Filled.Stop,
-                                contentDescription = "停止",
+                                Icons.Filled.Timer,
+                                contentDescription = "間隔設定",
+                                modifier = Modifier.size(32.dp),
+                                tint = Color.White
+                            )
+                        }
+                        // Play/Stop button
+                        IconButton(
+                            onClick = if (state.slideshowState is SlideshowState.Idle) {
+                                viewModel::toggleSlideshow
+                            } else {
+                                viewModel::stopSlideshow
+                            },
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (state.slideshowState is SlideshowState.Idle) {
+                                    Icons.Filled.PlayArrow
+                                } else {
+                                    Icons.Filled.Stop
+                                },
+                                contentDescription = if (state.slideshowState is SlideshowState.Idle) {
+                                    "スライドショー開始"
+                                } else {
+                                    "停止"
+                                },
                                 modifier = Modifier.size(32.dp),
                                 tint = Color.White
                             )
                         }
                     }
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
