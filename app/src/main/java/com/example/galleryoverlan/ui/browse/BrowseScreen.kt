@@ -137,13 +137,6 @@ fun BrowseScreen(
                     }
                 },
                 actions = {
-                    if (state.level is BrowseLevel.Folder && state.displayImages.isNotEmpty()) {
-                        IconButton(onClick = {
-                            onNavigateToViewer(state.currentPath, 0, true)
-                        }) {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = "スライドショー")
-                        }
-                    }
                     if (state.level is BrowseLevel.Folder && state.isSearchActive) {
                         IconButton(onClick = viewModel::clearSearch) {
                             Icon(Icons.Filled.Close, contentDescription = "検索解除")
@@ -156,6 +149,13 @@ fun BrowseScreen(
             if (state.level is BrowseLevel.Folder) {
                 BottomAppBar {
                     Spacer(modifier = Modifier.weight(1f))
+                    if (state.displayImages.isNotEmpty()) {
+                        IconButton(onClick = {
+                            onNavigateToViewer(state.currentPath, 0, true)
+                        }) {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = "スライドショー")
+                        }
+                    }
                     IconButton(onClick = viewModel::showRandomDialog) {
                         Icon(Icons.Filled.Casino, contentDescription = "ランダム")
                     }
