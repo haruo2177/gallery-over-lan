@@ -17,35 +17,57 @@ class SlideshowUseCaseTest {
     }
 
     @Test
-    fun `emits sequential indices wrapping around`() = runTest {
+    fun `emits sequential indices and stops at last image`() = runTest {
         val indices = useCase.start(
             totalImages = 3,
             startIndex = 0,
             intervalMs = 100
-        ).take(5).toList()
+        ).toList()
 
-        assertEquals(listOf(1, 2, 0, 1, 2), indices)
+        assertEquals(listOf(1, 2), indices)
     }
 
     @Test
-    fun `starts from given index`() = runTest {
+    fun `starts from given index and stops at last image`() = runTest {
         val indices = useCase.start(
             totalImages = 4,
             startIndex = 2,
             intervalMs = 100
-        ).take(3).toList()
+        ).toList()
 
-        assertEquals(listOf(3, 0, 1), indices)
+        assertEquals(listOf(3), indices)
     }
 
     @Test
-    fun `single image wraps to same index`() = runTest {
+    fun `single image emits once and stops`() = runTest {
         val indices = useCase.start(
             totalImages = 1,
             startIndex = 0,
             intervalMs = 100
-        ).take(3).toList()
+        ).toList()
 
-        assertEquals(listOf(0, 0, 0), indices)
+        assertEquals(listOf(0), indices)
+    }
+
+    @Test
+    fun `wraps around before stopping at last image`() = runTest {
+        val indices = useCase.start(
+            totalImages = 3,
+            startIndex = 1,
+            intervalMs = 100
+        ).toList()
+
+        assertEquals(listOf(2), indices)
+    }
+
+    @Test
+    fun `starting from last image goes through all and stops`() = runTest {
+        val indices = useCase.start(
+            totalImages = 3,
+            startIndex = 2,
+            intervalMs = 100
+        ).toList()
+
+        assertEquals(listOf(0, 1, 2), indices)
     }
 }

@@ -1,6 +1,7 @@
 package com.example.galleryoverlan.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -29,11 +30,19 @@ fun AppNavigation() {
             )
         }
 
-        composable(Routes.BROWSE) {
+        composable(Routes.BROWSE) { backStackEntry ->
+            val goBackToFolder = backStackEntry.savedStateHandle
+                .getStateFlow("goBackToFolder", false)
+                .collectAsState()
+
             BrowseScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToViewer = { folderPath, startIndex, autoSlideshow ->
                     navController.navigate(Routes.viewer(folderPath, startIndex, autoSlideshow))
+                },
+                goBackToFolder = goBackToFolder.value,
+                onGoBackToFolderHandled = {
+                    backStackEntry.savedStateHandle["goBackToFolder"] = false
                 }
             )
         }
@@ -50,7 +59,13 @@ fun AppNavigation() {
             )
         ) {
             ViewerScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateBackToFolder = {
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("goBackToFolder", true)
+                    navController.popBackStack()
+                }
             )
         }
     }

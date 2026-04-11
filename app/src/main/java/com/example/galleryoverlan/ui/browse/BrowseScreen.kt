@@ -86,6 +86,8 @@ import kotlin.math.roundToInt
 fun BrowseScreen(
     onNavigateBack: () -> Unit,
     onNavigateToViewer: (folderPath: String, startIndex: Int, autoSlideshow: Boolean) -> Unit,
+    goBackToFolder: Boolean = false,
+    onGoBackToFolderHandled: () -> Unit = {},
     viewModel: BrowseViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -94,6 +96,13 @@ fun BrowseScreen(
     // Restore scroll position when folder contents change
     LaunchedEffect(state.currentPath, state.targetScrollIndex) {
         gridState.scrollToItem(state.targetScrollIndex)
+    }
+
+    LaunchedEffect(goBackToFolder) {
+        if (goBackToFolder) {
+            viewModel.onBackPressed()
+            onGoBackToFolderHandled()
+        }
     }
 
     LaunchedEffect(Unit) {

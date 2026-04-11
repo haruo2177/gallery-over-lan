@@ -18,6 +18,10 @@ class SlideshowUseCase @Inject constructor() {
             delay(intervalMs)
             current = (current + 1) % totalImages
             emit(current)
+            if (current == totalImages - 1) {
+                delay(intervalMs)
+                break
+            }
         }
     }
 }

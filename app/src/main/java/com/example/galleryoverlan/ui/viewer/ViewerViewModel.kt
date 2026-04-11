@@ -109,6 +109,10 @@ class ViewerViewModel @Inject constructor(
         }
     }
 
+    fun dismissSlideshowEndDialog() {
+        _uiState.value = _uiState.value.copy(showSlideshowEndDialog = false)
+    }
+
     fun toggleIntervalPicker() {
         _uiState.value = _uiState.value.copy(
             showIntervalPicker = !_uiState.value.showIntervalPicker
@@ -133,6 +137,13 @@ class ViewerViewModel @Inject constructor(
             ).collect { nextIndex ->
                 _uiState.value = _uiState.value.copy(currentIndex = nextIndex)
             }
+            // Flow completed — reached the last image
+            slideshowJob = null
+            _uiState.value = _uiState.value.copy(
+                slideshowState = SlideshowState.Idle,
+                showControls = true,
+                showSlideshowEndDialog = true
+            )
         }
     }
 

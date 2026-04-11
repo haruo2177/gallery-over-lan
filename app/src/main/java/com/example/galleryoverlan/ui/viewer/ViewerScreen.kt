@@ -59,6 +59,7 @@ import com.example.galleryoverlan.domain.model.SlideshowState
 @Composable
 fun ViewerScreen(
     onNavigateBack: () -> Unit,
+    onNavigateBackToFolder: () -> Unit,
     viewModel: ViewerViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -270,6 +271,34 @@ fun ViewerScreen(
                 }
             }
         }
+    }
+
+    // Slideshow end dialog
+    if (state.showSlideshowEndDialog) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.85f))
+        )
+        AlertDialog(
+            onDismissRequest = viewModel::dismissSlideshowEndDialog,
+            text = {
+                Text("このフォルダの画像はここまでです")
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissSlideshowEndDialog) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    viewModel.dismissSlideshowEndDialog()
+                    onNavigateBackToFolder()
+                }) {
+                    Text("フォルダに戻る")
+                }
+            }
+        )
     }
 
     // Interval picker dialog

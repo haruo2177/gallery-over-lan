@@ -11,7 +11,8 @@ data class ViewerUiState(
     val showControls: Boolean = true,
     val slideshowState: SlideshowState = SlideshowState.Idle,
     val slideshowIntervalMs: Long = 1500L,
-    val showIntervalPicker: Boolean = false
+    val showIntervalPicker: Boolean = false,
+    val showSlideshowEndDialog: Boolean = false
 ) {
     val currentImage: ImageItem?
         get() = images.getOrNull(currentIndex)
