@@ -17,6 +17,7 @@ data class BrowseUiState(
     val sortOrder: SortOrder = SortOrder.NAME_ASC,
     val isLoading: Boolean = false,
     val error: String? = null,
+    val errorDetail: String? = null,
     val imageLoadError: String? = null,
     val targetScrollIndex: Int = 0,
     // Search

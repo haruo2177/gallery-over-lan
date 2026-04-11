@@ -11,6 +11,7 @@ import com.example.galleryoverlan.domain.model.FolderItem
 import com.example.galleryoverlan.domain.model.ImageItem
 import com.example.galleryoverlan.domain.model.SearchMode
 import com.example.galleryoverlan.domain.model.SearchOptions
+import com.example.galleryoverlan.domain.model.SmbError
 import com.example.galleryoverlan.domain.model.SortOrder
 import com.example.galleryoverlan.domain.usecase.BrowseFoldersUseCase
 import com.example.galleryoverlan.domain.usecase.ConnectToShareUseCase
@@ -76,13 +77,15 @@ class BrowseViewModel @Inject constructor(
                     shares = result.data,
                     breadcrumbs = listOf(BrowseBreadcrumbItem("共有一覧", "")),
                     isLoading = false,
-                    error = null
+                    error = null,
+                    errorDetail = null
                 )
             }
             is AppResult.Error -> {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = result.message
+                    error = result.message,
+                    errorDetail = result.errorDetail()
                 )
             }
         }
@@ -104,7 +107,8 @@ class BrowseViewModel @Inject constructor(
                 is AppResult.Error -> {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = result.message
+                        error = result.message,
+                        errorDetail = result.errorDetail()
                     )
                 }
             }
@@ -143,7 +147,8 @@ class BrowseViewModel @Inject constructor(
             is AppResult.Error -> {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = foldersResult.message
+                    error = foldersResult.message,
+                    errorDetail = foldersResult.errorDetail()
                 )
                 return
             }
@@ -176,6 +181,7 @@ class BrowseViewModel @Inject constructor(
             breadcrumbs = buildBreadcrumbs(path),
             isLoading = false,
             error = null,
+            errorDetail = null,
             targetScrollIndex = scrollPositionCache[path] ?: 0,
             filteredFolders = filteredResult?.first,
             filteredImages = filteredResult?.second,
@@ -468,6 +474,10 @@ class BrowseViewModel @Inject constructor(
             sourceFolders.shuffled().take(count)
         }
         _uiState.value = state.copy(randomFolders = picked)
+    }
+
+    private fun AppResult.Error.errorDetail(): String? {
+        return (exception as? SmbError)?.detail?.takeIf { it.isNotEmpty() }
     }
 
     override fun onCleared() {

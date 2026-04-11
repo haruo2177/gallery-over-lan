@@ -136,10 +136,24 @@ class SmbRepositoryImpl @Inject constructor(
         ensureConnected()
         val result = operation()
         if (result is AppResult.Error && isConnectionError(result.exception)) {
-            AppLogger.i("Operation failed with connection error, retrying after reconnect", TAG)
+            val ex = result.exception
+            AppLogger.w(
+                "Operation failed with connection error: ${ex::class.simpleName}: ${ex.message}, " +
+                    "attempting reconnect",
+                tag = TAG
+            )
             smbClient.disconnect()
             val reconnect = connectWithSavedConfig()
-            if (reconnect is AppResult.Error) return reconnect
+            if (reconnect is AppResult.Error) {
+                val reconnectEx = reconnect.exception
+                AppLogger.e(
+                    "Reconnect failed: ${reconnectEx::class.simpleName}: ${reconnectEx.message}",
+                    reconnectEx,
+                    TAG
+                )
+                return reconnect
+            }
+            AppLogger.i("Reconnect succeeded, retrying operation", TAG)
             return operation()
         }
         return result
@@ -148,13 +162,26 @@ class SmbRepositoryImpl @Inject constructor(
     private fun isConnectionError(error: Throwable?): Boolean {
         return error is SmbError.NetworkUnreachable ||
             error is SmbError.Timeout ||
+            error is SmbError.SessionExpired ||
             (error is SmbError.Unknown && error.cause !is IllegalStateException)
     }
 
     private suspend fun ensureConnected() {
         if (!smbClient.isConnected) {
-            AppLogger.i("Re-establishing connection", TAG)
-            connectWithSavedConfig()
+            AppLogger.w(
+                "Connection lost (isConnected=false), re-establishing connection",
+                tag = TAG
+            )
+            val result = connectWithSavedConfig()
+            if (result is AppResult.Error) {
+                AppLogger.e(
+                    "ensureConnected: reconnect failed: ${result.exception::class.simpleName}: ${result.exception.message}",
+                    result.exception,
+                    TAG
+                )
+            } else {
+                AppLogger.i("ensureConnected: reconnect succeeded", TAG)
+            }
         }
     }
 

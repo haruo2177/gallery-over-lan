@@ -495,6 +495,12 @@ class SmbClientImpl @Inject constructor() : SmbClient {
 
     private fun mapException(e: Exception): SmbError {
         val message = e.message?.lowercase() ?: ""
+        val fullChain = buildExceptionChain(e).lowercase()
+        AppLogger.w(
+            "mapException: ${e::class.simpleName}: ${e.message}",
+            throwable = e,
+            tag = TAG
+        )
         return when {
             message.contains("authentication") || message.contains("logon") ||
                 message.contains("password") || message.contains("STATUS_LOGON_FAILURE") ->
@@ -507,11 +513,28 @@ class SmbClientImpl @Inject constructor() : SmbClient {
                 message.contains("STATUS_OBJECT_PATH_NOT_FOUND") ->
                 SmbError.PathNotFound("", e)
 
-            message.contains("STATUS_BAD_NETWORK_NAME") || message.contains("share") ->
+            message.contains("STATUS_BAD_NETWORK_NAME") ->
                 SmbError.ShareNotFound("", e)
+
+            // セッション期限切れ（アイドル後に頻発）
+            message.contains("session_expired") || message.contains("network_session_expired") ||
+                message.contains("STATUS_USER_SESSION_DELETED") ||
+                message.contains("session was closed") ->
+                SmbError.SessionExpired(e)
 
             message.contains("timeout") || message.contains("timed out") ->
                 SmbError.Timeout(e)
+
+            // 接続切断系（ソケットレベル）
+            fullChain.contains("connection reset") || fullChain.contains("broken pipe") ||
+                fullChain.contains("end of stream") || fullChain.contains("eof") ||
+                fullChain.contains("socket closed") || fullChain.contains("stream closed") ->
+                SmbError.SessionExpired(e)
+
+            // TransportException（SMBJ固有、接続が切れた時に発生）
+            e::class.simpleName == "TransportException" ||
+                fullChain.contains("transport") ->
+                SmbError.SessionExpired(e)
 
             message.contains("unreachable") || message.contains("connect") ||
                 message.contains("refused") || message.contains("no route") ->
@@ -519,5 +542,16 @@ class SmbClientImpl @Inject constructor() : SmbClient {
 
             else -> SmbError.Unknown(e)
         }
+    }
+
+    /** 例外チェーン全体のメッセージを結合（原因の特定に利用） */
+    private fun buildExceptionChain(e: Throwable): String {
+        val sb = StringBuilder()
+        var current: Throwable? = e
+        while (current != null) {
+            sb.append(current::class.simpleName).append(": ").append(current.message).append(" -> ")
+            current = current.cause
+        }
+        return sb.toString()
     }
 }

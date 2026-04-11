@@ -290,6 +290,15 @@ fun BrowseScreen(
                                 text = state.error ?: "",
                                 color = MaterialTheme.colorScheme.error
                             )
+                            val detail = state.errorDetail
+                            if (!detail.isNullOrEmpty()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = detail,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
                                 onClick = viewModel::refresh,
