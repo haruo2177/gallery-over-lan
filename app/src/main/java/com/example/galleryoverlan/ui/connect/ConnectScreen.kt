@@ -112,7 +112,7 @@ fun ConnectScreen(
                 enabled = !state.isConnecting &&
                     (state.ipAddress.isNotBlank() || state.pcName.isNotBlank()) &&
                     state.userName.isNotBlank(),
-                modifier = Modifier.widthIn(min = 96.dp)
+                modifier = Modifier.width(96.dp)
             ) {
                 Text("接続")
             }
