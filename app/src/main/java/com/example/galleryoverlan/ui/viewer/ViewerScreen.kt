@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -188,21 +189,29 @@ fun ViewerScreen(
             ) {
                 Row(
                     modifier = Modifier
+                        .navigationBarsPadding()
                         .background(Color.Black.copy(alpha = 0.5f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Interval picker button
-                    IconButton(onClick = viewModel::toggleIntervalPicker) {
+                    IconButton(
+                        onClick = viewModel::toggleIntervalPicker,
+                        modifier = Modifier.size(56.dp)
+                    ) {
                         Icon(
                             Icons.Filled.Timer,
                             contentDescription = "間隔設定",
+                            modifier = Modifier.size(32.dp),
                             tint = Color.White
                         )
                     }
                     // Play/Pause button
-                    IconButton(onClick = viewModel::toggleSlideshow) {
+                    IconButton(
+                        onClick = viewModel::toggleSlideshow,
+                        modifier = Modifier.size(56.dp)
+                    ) {
                         Icon(
                             imageVector = if (state.isPlaying) {
                                 Icons.Filled.Pause
@@ -210,15 +219,20 @@ fun ViewerScreen(
                                 Icons.Filled.PlayArrow
                             },
                             contentDescription = if (state.isPlaying) "一時停止" else "スライドショー開始",
+                            modifier = Modifier.size(32.dp),
                             tint = Color.White
                         )
                     }
                     // Stop button (visible when not idle)
                     if (state.slideshowState !is SlideshowState.Idle) {
-                        IconButton(onClick = viewModel::stopSlideshow) {
+                        IconButton(
+                            onClick = viewModel::stopSlideshow,
+                            modifier = Modifier.size(56.dp)
+                        ) {
                             Icon(
                                 Icons.Filled.Stop,
                                 contentDescription = "停止",
+                                modifier = Modifier.size(32.dp),
                                 tint = Color.White
                             )
                         }
@@ -251,25 +265,25 @@ private fun IntervalPickerDialog(
         title = { Text("スライドショー間隔") },
         text = {
             Column {
-                Text("${sliderValue.toInt()}秒")
+                Text("${"%.1f".format(sliderValue)}秒")
                 Slider(
                     value = sliderValue,
                     onValueChange = { sliderValue = it },
-                    valueRange = 1f..30f,
-                    steps = 28
+                    valueRange = 0.5f..3f,
+                    steps = 4
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("1秒", style = MaterialTheme.typography.labelSmall)
-                    Text("30秒", style = MaterialTheme.typography.labelSmall)
+                    Text("0.5秒", style = MaterialTheme.typography.labelSmall)
+                    Text("3秒", style = MaterialTheme.typography.labelSmall)
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                onIntervalSelected(sliderValue.toLong() * 1000)
+                onIntervalSelected((sliderValue * 1000).toLong())
                 onDismiss()
             }) {
                 Text("OK")
