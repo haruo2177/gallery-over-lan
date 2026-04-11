@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -27,7 +29,9 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.remember
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -48,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -177,18 +182,37 @@ fun BrowseScreen(
             // Content
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
-                    state.isLoading -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    }
-
                     state.error != null -> {
-                        Text(
-                            text = state.error ?: "",
-                            color = MaterialTheme.colorScheme.error,
+                        Column(
                             modifier = Modifier
                                 .align(Alignment.Center)
-                                .padding(16.dp)
-                        )
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = state.error ?: "",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = viewModel::refresh,
+                                enabled = !state.isLoading
+                            ) {
+                                if (state.isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+                                Text("再試行")
+                            }
+                        }
+                    }
+
+                    state.isLoading -> {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     }
 
                     state.level is BrowseLevel.Shares -> {
@@ -206,7 +230,13 @@ fun BrowseScreen(
                                 viewModel.saveScrollPosition(gridState.firstVisibleItemIndex)
                                 viewModel.navigateTo(path)
                             },
-                            onImageClick = viewModel::onImageClick
+                            onImageClick = viewModel::onImageClick,
+                            onBack = {
+                                viewModel.saveScrollPosition(gridState.firstVisibleItemIndex)
+                                if (!viewModel.onBackPressed()) {
+                                    onNavigateBack()
+                                }
+                            }
                         )
                     }
                 }
@@ -236,8 +266,9 @@ private fun BrowseBreadcrumb(
                 )
             }
             val isLast = index == items.lastIndex
+            val displayName = if (item.name.length > 10) item.name.take(10) + "..." else item.name
             Text(
-                text = item.name,
+                text = displayName,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isLast) FontWeight.Bold else null,
                 color = if (isLast) {
@@ -246,7 +277,9 @@ private fun BrowseBreadcrumb(
                     MaterialTheme.colorScheme.primary
                 },
                 modifier = if (!isLast) {
-                    Modifier.clickable { onItemClick(item) }
+                    Modifier
+                        .minimumInteractiveComponentSize()
+                        .clickable { onItemClick(item) }
                 } else {
                     Modifier
                 }
@@ -296,14 +329,34 @@ private fun FolderContents(
     state: BrowseUiState,
     gridState: LazyGridState,
     onFolderClick: (String) -> Unit,
-    onImageClick: (Int) -> Unit
+    onImageClick: (Int) -> Unit,
+    onBack: () -> Unit
 ) {
     if (state.folders.isEmpty() && state.images.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text("このフォルダにフォルダや画像はありません")
+            if (state.imageLoadError != null) {
+                Text(
+                    text = state.imageLoadError,
+                    color = MaterialTheme.colorScheme.error
+                )
+            } else {
+                Text("このフォルダにフォルダや画像はありません")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Box(
+                modifier = Modifier.fillMaxWidth(fraction = 5f / 6f),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                TextButton(onClick = onBack) {
+                    Text("戻る")
+                }
+            }
         }
         return
     }
@@ -343,6 +396,21 @@ private fun FolderContents(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
+        // Image load error banner
+        if (state.imageLoadError != null) {
+            item(
+                key = "imageLoadError",
+                span = { GridItemSpan(maxLineSpan) }
+            ) {
+                Text(
+                    text = "画像の読み込みに失敗しました: ${state.imageLoadError}",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+        }
+
         // Folders as full-width list items
         items(
             items = state.folders,

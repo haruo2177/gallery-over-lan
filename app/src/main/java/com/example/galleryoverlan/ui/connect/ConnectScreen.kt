@@ -1,6 +1,7 @@
 package com.example.galleryoverlan.ui.connect
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -101,24 +103,19 @@ fun ConnectScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            Box(
+                modifier = Modifier.fillMaxWidth(fraction = 5f / 6f),
+                contentAlignment = Alignment.CenterEnd
+            ) {
             Button(
                 onClick = viewModel::connect,
                 enabled = !state.isConnecting &&
                     (state.ipAddress.isNotBlank() || state.pcName.isNotBlank()) &&
                     state.userName.isNotBlank(),
-                modifier = Modifier.align(Alignment.End)
+                modifier = Modifier.widthIn(min = 96.dp)
             ) {
-                if (state.isConnecting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .height(20.dp)
-                            .width(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
                 Text("接続")
+            }
             }
 
             state.error?.let { error ->

@@ -11,6 +11,7 @@ import com.example.galleryoverlan.domain.usecase.ListImagesUseCase
 import com.example.galleryoverlan.domain.usecase.SlideshowUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,24 +44,36 @@ class ViewerViewModel @Inject constructor(
 
     private fun loadImages() {
         viewModelScope.launch(dispatchers.io) {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-
-            val result = listImagesUseCase(folderPath)
-            _uiState.value = when (result) {
-                is AppResult.Success -> _uiState.value.copy(
-                    images = result.data,
-                    currentIndex = startIndex.coerceIn(0, (result.data.size - 1).coerceAtLeast(0)),
-                    isLoading = false
-                )
-                is AppResult.Error -> _uiState.value.copy(
-                    isLoading = false,
-                    error = result.message
-                )
-            }
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            doLoadImages()
 
             if (autoSlideshow && _uiState.value.images.isNotEmpty()) {
                 startSlideshow()
             }
+        }
+    }
+
+    private suspend fun doLoadImages() {
+        val result = listImagesUseCase(folderPath)
+        _uiState.value = when (result) {
+            is AppResult.Success -> _uiState.value.copy(
+                images = result.data,
+                currentIndex = startIndex.coerceIn(0, (result.data.size - 1).coerceAtLeast(0)),
+                isLoading = false,
+                error = null
+            )
+            is AppResult.Error -> _uiState.value.copy(
+                isLoading = false,
+                error = result.message
+            )
+        }
+    }
+
+    fun retry() {
+        _uiState.value = _uiState.value.copy(isLoading = true)
+        viewModelScope.launch(dispatchers.io) {
+            delay(500)
+            doLoadImages()
         }
     }
 

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -48,30 +49,34 @@ class BrowseViewModel @Inject constructor(
 
     private fun loadShares() {
         viewModelScope.launch(dispatchers.io) {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            doLoadShares()
+        }
+    }
 
-            when (val result = listSharesUseCase()) {
-                is AppResult.Success -> {
-                    _uiState.value = _uiState.value.copy(
-                        level = BrowseLevel.Shares,
-                        shares = result.data,
-                        breadcrumbs = listOf(BrowseBreadcrumbItem("共有一覧", "")),
-                        isLoading = false
-                    )
-                }
-                is AppResult.Error -> {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = result.message
-                    )
-                }
+    private suspend fun doLoadShares() {
+        when (val result = listSharesUseCase()) {
+            is AppResult.Success -> {
+                _uiState.value = _uiState.value.copy(
+                    level = BrowseLevel.Shares,
+                    shares = result.data,
+                    breadcrumbs = listOf(BrowseBreadcrumbItem("共有一覧", "")),
+                    isLoading = false,
+                    error = null
+                )
+            }
+            is AppResult.Error -> {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = result.message
+                )
             }
         }
     }
 
     fun onShareSelected(shareName: String) {
         viewModelScope.launch(dispatchers.io) {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = _uiState.value.copy(isLoading = true)
 
             when (val result = connectToShareUseCase(shareName)) {
                 is AppResult.Success -> {
@@ -100,8 +105,7 @@ class BrowseViewModel @Inject constructor(
         viewModelScope.launch(dispatchers.io) {
             _uiState.value = _uiState.value.copy(
                 currentPath = path,
-                isLoading = true,
-                error = null
+                isLoading = true
             )
             loadFolderContents(path)
         }
@@ -122,16 +126,26 @@ class BrowseViewModel @Inject constructor(
             }
         }
 
-        val images = when (imagesResult) {
-            is AppResult.Success -> sortImages(imagesResult.data, _uiState.value.sortOrder)
-            is AppResult.Error -> emptyList()
+        val images: List<ImageItem>
+        val imageLoadError: String?
+        when (imagesResult) {
+            is AppResult.Success -> {
+                images = sortImages(imagesResult.data, _uiState.value.sortOrder)
+                imageLoadError = null
+            }
+            is AppResult.Error -> {
+                images = emptyList()
+                imageLoadError = imagesResult.message
+            }
         }
 
         _uiState.value = _uiState.value.copy(
             folders = folders,
             images = images,
+            imageLoadError = imageLoadError,
             breadcrumbs = buildBreadcrumbs(path),
             isLoading = false,
+            error = null,
             targetScrollIndex = scrollPositionCache[path] ?: 0
         )
     }
@@ -203,9 +217,13 @@ class BrowseViewModel @Inject constructor(
 
     fun refresh() {
         val state = _uiState.value
-        when (state.level) {
-            is BrowseLevel.Shares -> loadShares()
-            is BrowseLevel.Folder -> navigateTo(state.currentPath)
+        _uiState.value = state.copy(isLoading = true)
+        viewModelScope.launch(dispatchers.io) {
+            delay(500)
+            when (state.level) {
+                is BrowseLevel.Shares -> doLoadShares()
+                is BrowseLevel.Folder -> loadFolderContents(state.currentPath)
+            }
         }
     }
 

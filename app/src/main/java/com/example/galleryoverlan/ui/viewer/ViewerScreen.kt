@@ -11,7 +11,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,6 +29,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -69,18 +73,37 @@ fun ViewerScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        if (state.isLoading) {
+        if (state.error != null) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = state.error ?: "",
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = viewModel::retry,
+                    enabled = !state.isLoading
+                ) {
+                    if (state.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text("再試行")
+                }
+            }
+        } else if (state.isLoading) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center),
                 color = Color.White
-            )
-        } else if (state.error != null) {
-            Text(
-                text = state.error ?: "",
-                color = Color.White,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(16.dp)
             )
         } else if (state.images.isNotEmpty()) {
             val pagerState = rememberPagerState(

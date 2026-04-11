@@ -16,6 +16,7 @@ data class BrowseUiState(
     val showSortMenu: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
+    val imageLoadError: String? = null,
     val targetScrollIndex: Int = 0
 )
 

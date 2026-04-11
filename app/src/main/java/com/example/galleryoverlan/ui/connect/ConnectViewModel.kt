@@ -97,10 +97,6 @@ class ConnectViewModel @Inject constructor(
                 )
                 when (result) {
                     is AppResult.Success -> {
-                        _uiState.value = _uiState.value.copy(
-                            isConnecting = false,
-                            isConnected = true
-                        )
                         _navigateToBoowse.emit(Unit)
                         return@launch
                     }
