@@ -10,7 +10,7 @@ data class ViewerUiState(
     val error: String? = null,
     val showControls: Boolean = true,
     val slideshowState: SlideshowState = SlideshowState.Idle,
-    val slideshowIntervalMs: Long = 3000L,
+    val slideshowIntervalMs: Long = 1500L,
     val showIntervalPicker: Boolean = false
 ) {
     val currentImage: ImageItem?
