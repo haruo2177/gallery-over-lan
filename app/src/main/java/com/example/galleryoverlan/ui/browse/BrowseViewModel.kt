@@ -48,6 +48,7 @@ class BrowseViewModel @Inject constructor(
     val navigateBack: SharedFlow<Unit> = _navigateBack.asSharedFlow()
 
     private val scrollPositionCache = mutableMapOf<String, Int>()
+    private val searchStateCache = mutableMapOf<String, CachedSearchState>()
 
     init {
         loadShares()
@@ -104,7 +105,16 @@ class BrowseViewModel @Inject constructor(
     }
 
     fun saveScrollPosition(firstVisibleItemIndex: Int) {
-        scrollPositionCache[_uiState.value.currentPath] = firstVisibleItemIndex
+        val state = _uiState.value
+        scrollPositionCache[state.currentPath] = firstVisibleItemIndex
+        if (state.isSearchActive) {
+            searchStateCache[state.currentPath] = CachedSearchState(
+                query = state.searchQuery,
+                options = state.searchOptions
+            )
+        } else {
+            searchStateCache.remove(state.currentPath)
+        }
     }
 
     fun navigateTo(path: String) {
@@ -145,6 +155,13 @@ class BrowseViewModel @Inject constructor(
             }
         }
 
+        val cachedSearch = searchStateCache[path]
+        val filteredResult = if (cachedSearch != null) {
+            applySearch(folders, images, cachedSearch.query, cachedSearch.options)
+        } else {
+            null
+        }
+
         _uiState.value = _uiState.value.copy(
             folders = folders,
             images = images,
@@ -153,10 +170,10 @@ class BrowseViewModel @Inject constructor(
             isLoading = false,
             error = null,
             targetScrollIndex = scrollPositionCache[path] ?: 0,
-            filteredFolders = null,
-            filteredImages = null,
-            isSearchActive = false,
-            searchQuery = ""
+            filteredFolders = filteredResult?.first,
+            filteredImages = filteredResult?.second,
+            isSearchActive = cachedSearch != null,
+            searchQuery = cachedSearch?.query ?: ""
         )
     }
 

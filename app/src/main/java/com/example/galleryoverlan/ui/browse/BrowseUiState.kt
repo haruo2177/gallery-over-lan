@@ -41,3 +41,8 @@ data class BrowseBreadcrumbItem(
     val name: String,
     val path: String
 )
+
+data class CachedSearchState(
+    val query: String,
+    val options: SearchOptions
+)
