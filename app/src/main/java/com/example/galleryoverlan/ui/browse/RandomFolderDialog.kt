@@ -15,12 +15,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -102,8 +101,8 @@ fun RandomFolderDialog(
                     modifier = Modifier.width(120.dp)
                 )
                 Spacer(modifier = Modifier.weight(1f))
-                IconButton(onClick = onReshuffle) {
-                    Icon(Icons.Filled.Refresh, contentDescription = "再実行")
+                TextButton(onClick = onReshuffle) {
+                    Text("再抽選")
                 }
             }
 
