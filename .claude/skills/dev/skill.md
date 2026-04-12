@@ -127,10 +127,11 @@ push完了後、確認を待たずにフェーズ10に進んでください。
 1. `app/build.gradle.kts` の `versionName` / `versionCode` と `git tag --sort=-v:refname | head -5` で既存タグを確認する
 2. 今回の変更内容（feat / fix / breaking 等）から次のバージョン番号（semver: `vX.Y.Z`）を提案し、**ユーザーに確認**する
 3. 承認後、必要なら `app/build.gradle.kts` の `versionName` / `versionCode` を更新してコミット・push する
-4. リリース用 APK をビルドする:
+4. リリース用 APK をビルドし、フェーズ1で選択したデバイスにインストールする:
    ```bash
-   JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew assembleRelease
+   JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew installRelease -Pandroid.inject.device.serial=<フェーズ1で選択されたデバイスのシリアル>
    ```
+   インストール後、リリースビルドでの動作確認をユーザーに依頼し、**OKをもらうまで待機**する（R8 minify などデバッグビルドでは検出できない不具合をここで確認するため）。問題があれば修正してフェーズ4以降をやり直す。
 5. タグを作成して push する:
    ```bash
    git tag -a vX.Y.Z -m "vX.Y.Z"
