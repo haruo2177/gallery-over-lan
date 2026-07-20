@@ -1,9 +1,11 @@
 package com.example.galleryoverlan.ui.browse
 
+import android.graphics.drawable.Animatable
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -74,7 +76,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.galleryoverlan.ui.viewer.SmbImageRequest
 import androidx.compose.ui.platform.LocalContext
@@ -479,6 +482,7 @@ private fun FolderContents(
     val cellSizePx = remember(density) {
         with(density) { 120.dp.toPx().roundToInt() }
     }
+    val isScrolling by remember { derivedStateOf { gridState.isScrollInProgress } }
 
     // Prefetch images beyond visible area
     val prefetchRange = 20
@@ -554,11 +558,22 @@ private fun FolderContents(
                 items = displayImages,
                 key = { _, image -> "image:${image.path}" }
             ) { index, image ->
-                val model = remember(image.path, cellSizePx) {
-                    SmbImageRequest(path = image.path, thumbnail = true, thumbnailSizePx = cellSizePx)
+                val request = remember(image.path, cellSizePx) {
+                    ImageRequest.Builder(context)
+                        .data(SmbImageRequest(path = image.path, thumbnail = true, thumbnailSizePx = cellSizePx))
+                        .size(cellSizePx)
+                        .build()
                 }
-                AsyncImage(
-                    model = model,
+                val painter = rememberAsyncImagePainter(request)
+                val painterState = painter.state
+                LaunchedEffect(painterState, isScrolling) {
+                    val drawable = (painterState as? AsyncImagePainter.State.Success)?.result?.drawable
+                    if (drawable is Animatable) {
+                        if (isScrolling) drawable.stop() else drawable.start()
+                    }
+                }
+                Image(
+                    painter = painter,
                     contentDescription = image.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier

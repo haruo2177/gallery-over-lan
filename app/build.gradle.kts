@@ -104,6 +104,7 @@ dependencies {
 
     // Image loading
     implementation(libs.coil.compose)
+    implementation(libs.coil.gif)
 
     // EXIF
     implementation(libs.androidx.exifinterface)

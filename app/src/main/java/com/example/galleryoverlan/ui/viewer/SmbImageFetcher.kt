@@ -39,13 +39,15 @@ class SmbImageFetcher(
 ) : Fetcher {
 
     private val thumbnailSize: Int = data.thumbnailSizePx
+    private val isGif: Boolean = data.path.substringAfterLast('.', "").equals("gif", ignoreCase = true)
 
     override suspend fun fetch(): FetchResult {
         // Check thumbnail cache first
         if (data.thumbnail) {
-            val cached = thumbnailCache.get(data.path)
+            val cacheKey = thumbnailCacheKey()
+            val cached = thumbnailCache.get(cacheKey)
             if (cached != null) {
-                return fileResult(cached)
+                return fileResult(cached, mimeType = if (isGif) "image/gif" else "image/jpeg")
             }
         }
 
@@ -55,10 +57,15 @@ class SmbImageFetcher(
 
         // Generate and cache thumbnail
         if (data.thumbnail) {
+            if (isGif) {
+                // Keep original bytes so the GIF can still animate; skip static re-encoding
+                val file = thumbnailCache.put(thumbnailCacheKey(), bytes)
+                return fileResult(file, mimeType = "image/gif")
+            }
             val thumbnailBytes = createThumbnail(bytes)
             if (thumbnailBytes != null) {
-                val file = thumbnailCache.put(data.path, thumbnailBytes)
-                return fileResult(file)
+                val file = thumbnailCache.put(thumbnailCacheKey(), thumbnailBytes)
+                return fileResult(file, mimeType = "image/jpeg")
             }
         }
 
@@ -72,13 +79,17 @@ class SmbImageFetcher(
         )
     }
 
-    private fun fileResult(file: File): SourceResult {
+    // GIF thumbnails are cached under a distinct key so they never resolve to a
+    // static thumbnail cached before animated support existed
+    private fun thumbnailCacheKey(): String = if (isGif) "${data.path}::gif" else data.path
+
+    private fun fileResult(file: File, mimeType: String): SourceResult {
         return SourceResult(
             source = ImageSource(
                 source = file.inputStream().source().buffer(),
                 context = context
             ),
-            mimeType = "image/jpeg",
+            mimeType = mimeType,
             dataSource = DataSource.DISK
         )
     }

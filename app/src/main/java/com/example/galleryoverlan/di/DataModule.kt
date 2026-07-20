@@ -1,10 +1,13 @@
 package com.example.galleryoverlan.di
 
 import android.content.Context
+import android.os.Build
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import coil.ImageLoader
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
 import com.example.galleryoverlan.core.network.NetworkMonitor
 import com.example.galleryoverlan.core.network.NetworkMonitorImpl
 import com.example.galleryoverlan.data.network.LanScanner
@@ -91,6 +94,11 @@ object DataProvidesModule {
             .components {
                 add(SmbImageFetcher.SmbImageKeyer())
                 add(SmbImageFetcher.Factory(smbRepository, thumbnailCache, context))
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    add(ImageDecoderDecoder.Factory())
+                } else {
+                    add(GifDecoder.Factory())
+                }
             }
             .crossfade(true)
             .build()
